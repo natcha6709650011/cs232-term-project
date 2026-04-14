@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Student Check-in</title>
+  <link rel="stylesheet" href="checkin.css" />
+</head>
+<body>
+  <div class="phone">
+
+    <!-- SCAN PAGE -->
+    <section id="scanPage" class="page active">
+      <div class="scan-page">
+        <button class="close-btn" type="button">×</button>
+
+        <div class="scanner-box">
+          <div class="corner top-left"></div>
+          <div class="corner top-right"></div>
+          <div class="corner bottom-left"></div>
+          <div class="corner bottom-right"></div>
+        </div>
+
+        <button id="scanBtn" class="pill-btn" type="button">
+          Find a code to scan
+        </button>
+      </div>
+    </section>
+
+    <!-- LOCATION PAGE -->
+    <section id="locationPage" class="page">
+      <div class="location-page">
+        <div class="map-area">
+          <img
+            class="map-image"
+            src="https://maps.googleapis.com/maps/api/staticmap?center=14.0725,100.6033&zoom=15&size=800x1200&scale=2&maptype=roadmap"
+            alt="Map"
+          />
+
+          <div class="map-fade"></div>
+
+          <div class="gps-btn">
+            <span class="gps-dot"></span>
+          </div>
+
+          <div class="location-tag">
+            3HGW+9VH, Khlong Nueng,<br />
+            Khlong Luang District, Path...
+          </div>
+
+          <div class="pin-wrap">
+            <div class="pin-head"></div>
+            <div class="pin-tail"></div>
+            <div class="pin-hole"></div>
+          </div>
+        </div>
+
+        <div class="bottom-sheet">
+          <input
+            id="locationInput"
+            class="location-input"
+            type="text"
+            value="พิกัดของคุณ 3HGW+9VH"
+            readonly
+          />
+
+          <button id="confirmBtn" class="primary-gradient-btn confirm-btn" type="button">
+            ยืนยัน
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- CLASS INFO PAGE -->
+    <section id="classInfoPage" class="page">
+      <div class="class-page">
+        <div class="title-bar">เช็คชื่อเข้าห้องเรียน</div>
+
+        <div class="content">
+          <div class="class-card">
+            <div id="subjectName" class="card-header">
+              CS232 INTRODUCTION TO CLOUD COMPUTING TECHNOLOGY
+            </div>
+
+            <div class="card-body">
+              <p><b>Section :</b> <span id="sectionText">650001</span></p>
+              <p><b>ห้องเรียน :</b> <span id="roomText">us2 - 309</span></p>
+              <p><b>เวลาเรียน :</b> <span id="timeText">09:30-12:30</span></p>
+              <p class="date"><span id="dateText">DD/MM/YYYY</span></p>
+            </div>
+          </div>
+
+          <button id="saveBtn" class="primary-gradient-btn save-btn" type="button">
+            บันทึก
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script src="checkin.js"></script>
+</body>
+</html>

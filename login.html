@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TU Class</title>
+  <link rel="stylesheet" href="login.css" />
+</head>
+<body>
+  <div class="login-card">
+    <div class="blue-banner">มหาวิทยาลัยธรรมศาสตร์</div>
+
+    <div class="form-section">
+      <h1>เข้าสู่ระบบ</h1>
+      <p>ยินดีต้อนรับเข้าสู่ระบบเช็คชื่อ</p>
+
+      <form id="loginForm" class="login-form">
+        <input type="text" id="studentId" placeholder="ชื่อผู้ใช้" />
+        <input type="password" id="password" placeholder="รหัสผ่าน" />
+        <button type="submit" class="login-btn">เข้าสู่ระบบ</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- success modal -->
+  <div class="overlay hidden" id="successOverlay">
+    <div class="modal-box">
+      <div class="success-icon">✓</div>
+      <h2>เข้าสู่ระบบสำเร็จ</h2>
+      <p>ยินดีต้อนรับเข้าสู่ระบบ</p>
+      <button class="success-btn" id="continueBtn">ดำเนินการต่อ</button>
+    </div>
+  </div>
+
+  <!-- fail modal -->
+  <div class="overlay hidden" id="failOverlay">
+    <div class="modal-box">
+      <div class="fail-icon">✕</div>
+      <h2>ข้อมูลไม่ถูกต้อง</h2>
+      <p>โปรดตรวจสอบผู้ใช้และรหัสผ่าน</p>
+      <button class="fail-btn" id="closeFailBtn">ตกลง</button>
+    </div>
+  </div>
+
+  <script src="login.js"></script>
+</body>
+</html>

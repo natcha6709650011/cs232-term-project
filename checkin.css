@@ -1,0 +1,445 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  background: #e5e5e5;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.phone {
+  width: 100%;
+  max-width: 420px;
+  min-height: 100vh;
+  background: #efefef;
+  position: relative;
+  overflow: hidden;
+}
+
+/* shared */
+.page {
+  display: none;
+  min-height: 100vh;
+}
+
+.page.active {
+  display: block;
+}
+
+.primary-gradient-btn {
+  width: 100%;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #2f61e8 0%, #2a55d7 100%);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s ease, opacity 0.2s ease;
+}
+
+.primary-gradient-btn:active {
+  transform: scale(0.98);
+}
+
+.primary-gradient-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.pill-btn {
+  min-width: 145px;
+  height: 36px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #2f61e8 0%, #2a55d7 100%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.pill-btn:active {
+  transform: scale(0.98);
+}
+
+/* =========================
+   SCAN PAGE
+========================= */
+.scan-page {
+  position: relative;
+  min-height: 100vh;
+  background: #efefef;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px 32px;
+}
+
+.close-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid #222;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 16px;
+  line-height: 1;
+  color: #222;
+  cursor: pointer;
+}
+
+.scanner-box {
+  width: min(210px, 62vw);
+  aspect-ratio: 1 / 1;
+  position: relative;
+  margin-bottom: 190px;
+}
+
+.corner {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+}
+
+.top-left {
+  top: 0;
+  left: 0;
+  border-top: 5px solid #000;
+  border-left: 5px solid #000;
+  border-top-left-radius: 16px;
+}
+
+.top-right {
+  top: 0;
+  right: 0;
+  border-top: 5px solid #000;
+  border-right: 5px solid #000;
+  border-top-right-radius: 16px;
+}
+
+.bottom-left {
+  bottom: 0;
+  left: 0;
+  border-bottom: 5px solid #000;
+  border-left: 5px solid #000;
+  border-bottom-left-radius: 16px;
+}
+
+.bottom-right {
+  bottom: 0;
+  right: 0;
+  border-bottom: 5px solid #000;
+  border-right: 5px solid #000;
+  border-bottom-right-radius: 16px;
+}
+
+/* =========================
+   LOCATION PAGE
+========================= */
+.location-page {
+  position: relative;
+  min-height: 100vh;
+  background: #efefef;
+}
+
+.map-area {
+  position: relative;
+  height: 74vh;
+  min-height: 520px;
+  overflow: hidden;
+  background: #dfe6e9;
+}
+
+.map-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: saturate(0.85) brightness(1.03);
+}
+
+.map-fade {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.38);
+}
+
+.gps-btn {
+  position: absolute;
+  top: 16px;
+  left: 14px;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #d4d4d4;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  z-index: 3;
+}
+
+.gps-dot {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #111;
+  border-radius: 50%;
+}
+
+.gps-dot::before,
+.gps-dot::after {
+  content: "";
+  position: absolute;
+  background: #111;
+}
+
+.gps-dot::before {
+  width: 2px;
+  height: 18px;
+  left: 4px;
+  top: -4px;
+}
+
+.gps-dot::after {
+  width: 18px;
+  height: 2px;
+  left: -4px;
+  top: 4px;
+}
+
+.location-tag {
+  position: absolute;
+  top: 222px;
+  left: 58%;
+  transform: translateX(-18%);
+  background: #171717;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+  padding: 10px 12px;
+  border-radius: 4px;
+  max-width: 190px;
+  z-index: 3;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+}
+
+.pin-wrap {
+  position: absolute;
+  top: 288px;
+  left: 60%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 42px;
+  z-index: 3;
+}
+
+.pin-head {
+  width: 28px;
+  height: 28px;
+  background: #ff6b5f;
+  border-radius: 50%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.pin-tail {
+  position: absolute;
+  top: 16px;
+  left: 9px;
+  width: 10px;
+  height: 18px;
+  background: #ff6b5f;
+  transform: rotate(45deg);
+  border-bottom-right-radius: 4px;
+}
+
+.pin-hole {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border-radius: 50%;
+  z-index: 4;
+}
+
+.bottom-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #efefef;
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+  padding: 22px 22px 30px;
+  box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.08);
+}
+
+.location-input {
+  width: 100%;
+  height: 46px;
+  border: 1px solid #9b9b9b;
+  border-radius: 10px;
+  background: #fff;
+  padding: 0 14px;
+  font-size: 16px;
+  color: #333;
+  text-align: center;
+  outline: none;
+  margin-bottom: 14px;
+}
+
+.confirm-btn {
+  height: 70px;
+  font-size: 15px;
+  box-shadow: 0 6px 16px rgba(47, 97, 232, 0.25);
+}
+
+/* =========================
+   CLASS INFO PAGE
+========================= */
+.class-page {
+  min-height: 100vh;
+  background: #cfcfcf;
+}
+
+.title-bar {
+  background: #f3f3f3;
+  text-align: center;
+  padding: 22px 16px 16px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111;
+}
+
+.content {
+  padding: 28px 20px;
+}
+
+.class-card {
+  background: #fff;
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2);
+  margin-bottom: 32px;
+}
+
+.card-header {
+  background: linear-gradient(180deg, #2f61e8 0%, #2a55d7 100%);
+  color: #fff;
+  font-weight: 700;
+  padding: 20px;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+.card-body {
+  padding: 22px;
+  color: #555;
+  line-height: 2;
+  font-size: 15px;
+}
+
+.card-body p {
+  margin-bottom: 6px;
+}
+
+.date {
+  margin-top: 10px;
+  color: #777;
+}
+
+.save-btn {
+  height: 60px;
+  font-size: 18px;
+}
+
+/* responsive */
+@media (max-width: 390px) {
+  .scanner-box {
+    width: min(190px, 64vw);
+    margin-bottom: 170px;
+  }
+
+  .corner {
+    width: 30px;
+    height: 30px;
+  }
+
+  .map-area {
+    min-height: 500px;
+  }
+
+  .location-tag {
+    top: 210px;
+    max-width: 178px;
+    font-size: 10px;
+  }
+
+  .pin-wrap {
+    top: 278px;
+  }
+
+  .bottom-sheet {
+    padding: 18px 16px 24px;
+  }
+
+  .location-input {
+    height: 44px;
+    font-size: 15px;
+  }
+
+  .confirm-btn {
+    height: 64px;
+    font-size: 14px;
+  }
+
+  .title-bar {
+    font-size: 17px;
+    padding: 20px 14px 14px;
+  }
+
+  .content {
+    padding: 22px 16px;
+  }
+
+  .class-card {
+    border-radius: 18px;
+    margin-bottom: 24px;
+  }
+
+  .card-header {
+    padding: 16px;
+    font-size: 13px;
+  }
+
+  .card-body {
+    padding: 18px;
+    font-size: 14px;
+  }
+
+  .save-btn {
+    height: 56px;
+    font-size: 17px;
+  }
+}
