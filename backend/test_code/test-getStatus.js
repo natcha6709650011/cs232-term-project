@@ -1,0 +1,19 @@
+const { handler } = require("../getStatus");
+
+const event = {
+  pathParameters: {
+    session_id: "SESSION001"
+  }
+};
+
+handler(event)
+  .then((res) => {
+    console.log("RESULT:");
+    console.log(res);
+
+    console.log("BODY:");
+    console.log(JSON.parse(res.body));
+  })
+  .catch((err) => {
+    console.error("ERROR:", err);
+  });
