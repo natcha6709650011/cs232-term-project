@@ -1,55 +1,33 @@
-const { response, getBody, dynamodb } = require("./common");
-const { v4: uuidv4 } = require("uuid");
+const { response, getBody, dynamodb, haversineDistanceMeters } = require("./common");
 
-//ชื่อตาราง
 const USERS_TABLE = process.env.USERS_TABLE || "Users";
 const SESSIONS_TABLE = process.env.SESSIONS_TABLE || "Sessions";
+const ATTENDANCE_TABLE = process.env.ATTENDANCE_TABLE || "Attendance";
+
+const CHECKIN_RADIUS_METERS = 50; // รัศมีเช็คอิน 50 เมตร
 
 exports.handler = async (event) => {
   try {
-    //อ่านข้อมูลจาก request
+    // อ่านข้อมูลจาก request
     const body = getBody(event);
 
     const {
-      line_user_id,   // id อาจารย์
-      class_id,       // id วิชา/คาบ
-      course_id,      // รหัสวิชา
-      course_name,    // ชื่อวิชา
-      section,        // section
-      start_time,     // เวลาเริ่มเรียน
-      end_time,       // เวลาจบเรียน
-      student_count,  // จำนวน นศ
-      type,           // onsite / online / cancel
-      latitude,
-      longitude
+      line_user_id, // line user id ของนักศึกษา
+      session_id,   // id ของ session ที่จะเช็คอิน
+      latitude,     // พิกัดตอนเช็คอิน
+      longitude,    // พิกัดตอนเช็คอิน
+      image_url     // รูปภาพตอนเช็คอิน
     } = body;
 
-    //เช็คข้อมูลพื้นฐาน
-    if (!line_user_id || !class_id || !type) {
+    // เช็คข้อมูลพื้นฐาน
+    if (!line_user_id || !session_id) {
       return response(400, {
         success: false,
-        message: "missing required fields"
+        message: "missing line_user_id or session_id"
       });
     }
 
-    //เช็ค type
-    const allowedTypes = ["onsite", "online", "cancel"];
-    if (!allowedTypes.includes(type)) {
-      return response(400, {
-        success: false,
-        message: "invalid type"
-      });
-    }
-
-    //ถ้า onsite ต้องมี location
-    if (type === "onsite" && (latitude == null || longitude == null)) {
-      return response(400, {
-        success: false,
-        message: "onsite class must have location"
-      });
-    }
-
-    //ดึง user จาก Users table
+    // ดึง user จาก Users table
     const userResult = await dynamodb.get({
       TableName: USERS_TABLE,
       Key: { line_user_id }
@@ -57,7 +35,7 @@ exports.handler = async (event) => {
 
     const user = userResult.Item;
 
-    //ไม่เจอ user
+    // ไม่เจอ user
     if (!user) {
       return response(404, {
         success: false,
@@ -65,83 +43,160 @@ exports.handler = async (event) => {
       });
     }
 
-    //ไม่ใช่อาจารย์
-    if (user.role !== "teacher") {
+    // ต้องเป็น student เท่านั้น
+    if (user.role !== "student") {
       return response(403, {
         success: false,
-        message: "only teacher can start session"
+        message: "only students can check in"
       });
     }
 
-    //เตรียมข้อมูล session
-    const teacher_id = line_user_id;
-    const session_id = uuidv4();
-
-    const now = Date.now();
-    const expire_at = now + 30 * 60 * 1000; // 30 นาที
-
-    let status = "active";
-    if (type === "cancel") {
-      status = "cancelled";
-    }
-
-    //รวมข้อมูล class + session
-    const sessionItem = {
-      session_id,
-      teacher_id,
-      teacher_name: user.name_th || user.name_en || user.username || null,
-
-      //class info
-      class_id,
-      course_id,
-      course_name,
-      section,
-      start_time,
-      end_time,
-      student_count,
-
-      //session info
-      type,
-      status,
-      latitude: type === "onsite" ? latitude : null,
-      longitude: type === "onsite" ? longitude : null,
-
-      created_at: now,
-      expire_at
-    };
-
-    //บันทึกลง DynamoDB
-    await dynamodb.put({
+    // ดึง session จาก Sessions table
+    const sessionResult = await dynamodb.get({
       TableName: SESSIONS_TABLE,
-      Item: sessionItem
+      Key: { session_id }
     }).promise();
 
-    //สร้าง check-in link
-    const checkin_link =
-      type === "cancel"
-        ? null
-        : `https://your-liff-url.com/checkin?session_id=${session_id}`;//รอปรับเป็น URL จริง
+    const session = sessionResult.Item;
 
-    // 🔹 10) ส่ง response กลับ
+    // ไม่เจอ session
+    if (!session) {
+      return response(404, {
+        success: false,
+        message: "session not found"
+      });
+    }
+
+    // เช็คสถานะ session
+    if (session.status === "cancelled") {
+      return response(400, {
+        success: false,
+        message: "class is cancelled"
+      });
+    }
+
+    if (session.status !== "active") {
+      return response(400, {
+        success: false,
+        message: "session is not active"
+      });
+    }
+
+    // session หมดเวลาแล้ว
+    if (Date.now() > session.expire_at) {
+      return response(400, {
+        success: false,
+        message: "session has expired"
+      });
+    }
+
+    // กันเช็คซ้ำ
+    // Attendance table ใช้ PK = session_id, SK = line_user_id
+    const existingAttendance = await dynamodb.get({
+      TableName: ATTENDANCE_TABLE,
+      Key: {
+        session_id,
+        line_user_id
+      }
+    }).promise();
+
+    if (existingAttendance.Item) {
+      return response(409, {
+        success: false,
+        message: "already checked in"
+      });
+    }
+
+    // ต้องมีรูปเสมอ
+    if (!image_url) {
+      return response(400, {
+        success: false,
+        message: "image_url is required"
+      });
+    }
+
+    // ถ้าเป็น onsite ต้องเช็คระยะ
+    if (session.type === "onsite") {
+      // ต้องมี location ของนักศึกษา
+      if (latitude == null || longitude == null) {
+        return response(400, {
+          success: false,
+          message: "onsite check-in requires latitude and longitude"
+        });
+      }
+
+      // ต้องมี location ของอาจารย์ใน session
+      if (session.latitude == null || session.longitude == null) {
+        return response(500, {
+          success: false,
+          message: "teacher location not found in session"
+        });
+      }
+
+      // คำนวณระยะทางระหว่างพิกัดอาจารย์กับนักศึกษา
+      const distance = haversineDistanceMeters(
+        session.latitude,
+        session.longitude,
+        latitude,
+        longitude
+      );
+
+      // ตรวจสอบว่าอยู่ในรัศมี 50 เมตรหรือไม่
+      if (distance > CHECKIN_RADIUS_METERS) {
+        return response(400, {
+          success: false,
+          message: "out of allowed range",
+          data: {
+            distance_meters: Math.round(distance),
+            allowed_meters: CHECKIN_RADIUS_METERS
+          }
+        });
+      }
+    }
+
+    // เตรียมข้อมูล attendance ที่จะบันทึก
+    const attendanceItem = {
+      session_id,
+      line_user_id,
+
+      // ข้อมูลนักศึกษา
+      student_username: user.username || null,
+      student_name: user.name_th || user.name_en || user.username || null,
+      student_email: user.email || null,
+
+      // ข้อมูลคาบ
+      class_id: session.class_id || null,
+      course_id: session.course_id || null,
+      course_name: session.course_name || null,
+      section: session.section || null,
+
+      // ผลการเช็คชื่อ
+      status: "present",
+
+      // ตำแหน่งและรูปภาพ
+      latitude: latitude ?? null,
+      longitude: longitude ?? null,
+      image_url,
+
+      // เวลาเช็คชื่อ
+      checkin_time: Date.now()
+    };
+
+    // บันทึกลง DynamoDB
+    await dynamodb.put({
+      TableName: ATTENDANCE_TABLE,
+      Item: attendanceItem
+    }).promise();
+
+    // ส่ง response กลับ
     return response(200, {
       success: true,
-      message: "session created",
-      data: {
-        session_id,
-        teacher_id,
-        teacher_name: sessionItem.teacher_name,
-        class_id,
-        course_name,
-        section,
-        type,
-        status,
-        expire_at,
-        checkin_link
-      }
+      message: "check-in success",
+      data: attendanceItem
     });
 
   } catch (error) {
-    console.error("START SESSION ERROR:", error);
+    console.error("CHECK-IN ERROR:", error);
 
     return response(500, {
       success: false,
