@@ -120,7 +120,7 @@ exports.handler = async (event) => {
     const checkin_link =
       type === "cancel"
         ? null
-        : `https://your-liff-url.com/checkin?session_id=${session_id}`;
+        : `https://your-liff-url.com/checkin?session_id=${session_id}`;//รอปรับเป็น URL จริง
 
     // 🔹 10) ส่ง response กลับ
     return response(200, {
