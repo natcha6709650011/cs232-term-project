@@ -28,21 +28,12 @@ exports.handler = async (event) => {
     }
 
     // ดึง user จาก Users table
-    //const userResult = await dynamodb.get({
-      //TableName: USERS_TABLE,
-      //Key: { line_user_id }
-   // }).promise();
+    const userResult = await dynamodb.get({
+      TableName: USERS_TABLE,
+      Key: { line_user_id }
+    }).promise();
 
-   // const user = userResult.Item;
-   const user = {
-  line_user_id: "U99999999",
-  role: "student",
-  username: "student@dome.tu.ac.th",
-  name_th: "นักศึกษาทดสอบ",
-  email: "student@dome.tu.ac.th"
-};
-
-
+    const user = userResult.Item;
 
     // ไม่เจอ user
     if (!user) {
@@ -61,25 +52,12 @@ exports.handler = async (event) => {
     }
 
     // ดึง session จาก Sessions table
-    //const sessionResult = await dynamodb.get({
-      //TableName: SESSIONS_TABLE,
-      //Key: { session_id }
-    //}).promise();
+    const sessionResult = await dynamodb.get({
+      TableName: SESSIONS_TABLE,
+      Key: { session_id }
+    }).promise();
 
-   // const session = sessionResult.Item;
-   const session = {
-  session_id: "SESSION001",
-  class_id: "CS101_SEC01",
-  course_id: "CS101",
-  course_name: "Cloud Computing",
-  section: "01",
-  type: "onsite",
-  status: "active",
-  latitude: 13.7367,
-  longitude: 100.5231,
-  expire_at: Date.now() + 10 * 60 * 1000
-};
-
+    const session = sessionResult.Item;
 
     // ไม่เจอ session
     if (!session) {
@@ -114,18 +92,15 @@ exports.handler = async (event) => {
 
     // กันเช็คซ้ำ
     // Attendance table ใช้ PK = session_id, SK = line_user_id
-    //const existingAttendance = await dynamodb.get({
-      //TableName: ATTENDANCE_TABLE,
-      //Key: {
-        //session_id,
-       // line_user_id
-      //}
-    //}).promise();
+    const existingAttendance = await dynamodb.get({
+      TableName: ATTENDANCE_TABLE,
+      Key: {
+        session_id,
+        line_user_id
+      }
+    }).promise();
 
-   // if (existingAttendance.Item) {
-   const existingAttendance = { Item: null };
-   
-   if (existingAttendance.Item) {
+    if (existingAttendance.Item) {
       return response(409, {
         success: false,
         message: "already checked in"
@@ -208,11 +183,10 @@ exports.handler = async (event) => {
     };
 
     // บันทึกลง DynamoDB
-    //await dynamodb.put({
-      //TableName: ATTENDANCE_TABLE,
-      //Item: attendanceItem
-    //}).promise();
-    console.log("MOCK SAVE ATTENDANCE:", attendanceItem);
+    await dynamodb.put({
+      TableName: ATTENDANCE_TABLE,
+      Item: attendanceItem
+    }).promise();
 
     // ส่ง response กลับ
     return response(200, {

@@ -1,6 +1,6 @@
 const path = require("path");
 
-// โหลด .env จาก backend/
+// โหลด .env จากโฟลเดอร์ backend
 require("dotenv").config({
   path: path.resolve(__dirname, "../.env")
 });
@@ -11,8 +11,8 @@ const { handler } = require("../login");
 const event = {
   body: JSON.stringify({
     line_user_id: "U123456789",
-    username: "6709650011",
-    password: "1849901789177"
+    username: "//รหัสนศ หรือ userอาจารย์//",
+    password: "บัตรปชช หรือ passwordอาจารย์"
   })
 };
 
