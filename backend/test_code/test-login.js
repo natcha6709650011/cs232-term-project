@@ -1,21 +1,27 @@
-require("dotenv").config();
+const path = require("path");
+
+// โหลด .env จาก backend/
+require("dotenv").config({
+  path: path.resolve(__dirname, "../.env")
+});
+
 const { handler } = require("../login");
 
-// จำลอง request แบบที่ API Gateway ส่งมา
+// จำลอง event แบบ Lambda
 const event = {
   body: JSON.stringify({
-    line_user_id: "------",   // ใส่อะไรก็ได้ก่อน
-    username: "natcha.kanch@dome.tu.ac.th",
-    password: "------"
+    line_user_id: "U123456789",
+    username: "6709650011",
+    password: "1849901789177"
   })
 };
 
 handler(event)
   .then((res) => {
-    console.log("RESULT:");
+    console.log("===== RESULT =====");
     console.log(res);
 
-    console.log("BODY:");
+    console.log("===== BODY =====");
     console.log(JSON.parse(res.body));
   })
   .catch((err) => {
