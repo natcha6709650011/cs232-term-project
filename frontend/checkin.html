@@ -109,6 +109,30 @@
             </div>
           </div>
 
+          <div class="photo-card">
+            <div class="photo-card-header">
+              <p class="photo-step">Step 3</p>
+              <h3>ถ่ายภาพยืนยันตัวตน</h3>
+              <p id="photoStatusText" class="photo-note">เปิดกล้องและถ่ายภาพจากกล้องมือถือเท่านั้น</p>
+            </div>
+
+            <div class="photo-preview-wrap">
+              <video id="photoVideo" class="photo-video" autoplay playsinline muted></video>
+              <img id="capturedImage" class="captured-image hidden" alt="Captured preview" />
+              <div id="photoPlaceholder" class="photo-placeholder">
+                ยังไม่ได้ถ่ายภาพ
+              </div>
+            </div>
+
+            <canvas id="photoCanvas" class="hidden"></canvas>
+
+            <div class="photo-actions">
+              <button id="openPhotoCameraBtn" class="secondary-btn" type="button">เปิดกล้อง</button>
+              <button id="capturePhotoBtn" class="secondary-btn" type="button" disabled>ถ่ายภาพ</button>
+              <button id="retakePhotoBtn" class="secondary-btn" type="button" disabled>ถ่ายใหม่</button>
+            </div>
+          </div>
+
           <button id="saveBtn" class="primary-gradient-btn save-btn" type="button">
             บันทึก
           </button>

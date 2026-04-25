@@ -24,6 +24,14 @@ const timeText = document.getElementById("timeText");
 const dateText = document.getElementById("dateText");
 const sessionText = document.getElementById("sessionText");
 const coordsText = document.getElementById("coordsText");
+const openPhotoCameraBtn = document.getElementById("openPhotoCameraBtn");
+const capturePhotoBtn = document.getElementById("capturePhotoBtn");
+const retakePhotoBtn = document.getElementById("retakePhotoBtn");
+const photoVideo = document.getElementById("photoVideo");
+const capturedImage = document.getElementById("capturedImage");
+const photoPlaceholder = document.getElementById("photoPlaceholder");
+const photoCanvas = document.getElementById("photoCanvas");
+const photoStatusText = document.getElementById("photoStatusText");
 
 const API_BASE_URL = "https://9y8xshv9ek.execute-api.us-east-1.amazonaws.com";
 const UPLOAD_API_URL = "https://mxys2eeapf.execute-api.us-east-1.amazonaws.com/default/generate-upload-url";
@@ -34,9 +42,20 @@ let currentSessionId = "";
 let scannerStream = null;
 let scanIntervalId = null;
 let barcodeDetector = null;
+let photoStream = null;
+let currentPhotoBlob = null;
+let currentPhotoPreviewUrl = "";
+
+const storedProfile = (() => {
+  try {
+    return JSON.parse(localStorage.getItem("user_profile") || "{}");
+  } catch (error) {
+    return {};
+  }
+})();
 
 const studentData = {
-  studentId: "6700000000",
+  studentId: storedProfile.username || "6700000000",
   lineUserId: localStorage.getItem("line_user_id") || "mock-line-user-id"
 };
 
@@ -112,6 +131,132 @@ function stopScanner() {
   }
 
   scannerVideo.srcObject = null;
+}
+
+function stopPhotoCamera() {
+  if (photoStream) {
+    photoStream.getTracks().forEach((track) => track.stop());
+    photoStream = null;
+  }
+
+  photoVideo.srcObject = null;
+  capturePhotoBtn.disabled = true;
+}
+
+function resetCapturedPhoto() {
+  currentPhotoBlob = null;
+
+  if (currentPhotoPreviewUrl) {
+    URL.revokeObjectURL(currentPhotoPreviewUrl);
+    currentPhotoPreviewUrl = "";
+  }
+
+  capturedImage.src = "";
+  capturedImage.classList.add("hidden");
+  photoPlaceholder.classList.remove("hidden");
+  retakePhotoBtn.disabled = true;
+}
+
+async function openPhotoCamera() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    photoStatusText.textContent = "อุปกรณ์นี้ไม่รองรับการเปิดกล้อง";
+    return;
+  }
+
+  try {
+    stopPhotoCamera();
+
+    photoStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: "user"
+      },
+      audio: false
+    });
+
+    photoVideo.srcObject = photoStream;
+    await photoVideo.play();
+    capturePhotoBtn.disabled = false;
+    photoStatusText.textContent = "กล้องพร้อมแล้ว กดถ่ายภาพเพื่อยืนยันตัวตน";
+  } catch (error) {
+    console.error("Photo camera error:", error);
+    photoStatusText.textContent = "ไม่สามารถเปิดกล้องถ่ายภาพได้";
+    stopPhotoCamera();
+  }
+}
+
+function capturePhoto() {
+  if (!photoVideo.videoWidth || !photoVideo.videoHeight) {
+    photoStatusText.textContent = "กล้องยังไม่พร้อมสำหรับการถ่ายภาพ";
+    return;
+  }
+
+  photoCanvas.width = photoVideo.videoWidth;
+  photoCanvas.height = photoVideo.videoHeight;
+
+  const context = photoCanvas.getContext("2d");
+  context.drawImage(photoVideo, 0, 0, photoCanvas.width, photoCanvas.height);
+
+  photoCanvas.toBlob((blob) => {
+    if (!blob) {
+      photoStatusText.textContent = "ถ่ายภาพไม่สำเร็จ กรุณาลองใหม่";
+      return;
+    }
+
+    currentPhotoBlob = blob;
+
+    if (currentPhotoPreviewUrl) {
+      URL.revokeObjectURL(currentPhotoPreviewUrl);
+    }
+
+    currentPhotoPreviewUrl = URL.createObjectURL(blob);
+    capturedImage.src = currentPhotoPreviewUrl;
+    capturedImage.classList.remove("hidden");
+    photoPlaceholder.classList.add("hidden");
+    retakePhotoBtn.disabled = false;
+    photoStatusText.textContent = "ถ่ายภาพเรียบร้อยแล้ว พร้อมอัปโหลดก่อนเช็คชื่อ";
+    stopPhotoCamera();
+  }, "image/jpeg", 0.92);
+}
+
+async function requestUploadTarget() {
+  const response = await fetch(UPLOAD_API_URL, {
+    method: "GET"
+  });
+
+  const result = await response.json();
+  const data = result.data || result;
+
+  if (!response.ok) {
+    throw new Error(result.message || "ไม่สามารถขอลิงก์อัปโหลดรูปได้");
+  }
+
+  if (!data.upload_url || !data.file_path) {
+    throw new Error("upload api ไม่ได้ส่ง upload_url หรือ file_path กลับมา");
+  }
+
+  return data;
+}
+
+async function uploadCapturedImage() {
+  if (!currentPhotoBlob) {
+    throw new Error("กรุณาถ่ายภาพก่อนเช็คชื่อ");
+  }
+
+  const { upload_url, file_path } = await requestUploadTarget();
+
+  const uploadResponse = await fetch(upload_url, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "image/jpeg"
+    },
+    body: currentPhotoBlob
+  });
+
+  if (!uploadResponse.ok) {
+    throw new Error("อัปโหลดรูปไป S3 ไม่สำเร็จ");
+  }
+
+  return file_path;
 }
 
 async function handleDetectedQr(rawValue) {
@@ -229,7 +374,7 @@ function loadCurrentLocation() {
   );
 }
 
-function buildCheckinPayload() {
+function buildCheckinPayload(imageUrl) {
   if (!currentSessionId) {
     alert("ยังไม่ได้สแกน QR");
     return null;
@@ -245,22 +390,26 @@ function buildCheckinPayload() {
     session_id: currentSessionId,
     student_id: studentData.studentId,
     latitude: currentLatitude,
-    longitude: currentLongitude
+    longitude: currentLongitude,
+    image_url: imageUrl
   };
 }
 
 async function submitCheckin() {
-  const payload = buildCheckinPayload();
-  if (!payload) return;
-
-  if (!API_BASE_URL) {
-    alert("หน้าเช็คชื่อพร้อมแล้ว แต่ยังไม่ได้ใส่ API_BASE_URL");
-    console.log("Check-in payload:", payload);
-    return;
-  }
-
   try {
     saveBtn.disabled = true;
+    saveBtn.textContent = "กำลังอัปโหลดรูป...";
+
+    const imageUrl = await uploadCapturedImage();
+    const payload = buildCheckinPayload(imageUrl);
+    if (!payload) return;
+
+    if (!API_BASE_URL) {
+      alert("หน้าเช็คชื่อพร้อมแล้ว แต่ยังไม่ได้ใส่ API_BASE_URL");
+      console.log("Check-in payload:", payload);
+      return;
+    }
+
     saveBtn.textContent = "กำลังบันทึก...";
 
     const response = await fetch(`${API_BASE_URL}/check-in`, {
@@ -306,18 +455,30 @@ confirmBtn.addEventListener("click", () => {
 
   renderClassInfo();
   showPage(classInfoPage);
+  openPhotoCamera();
 });
 
 saveBtn.addEventListener("click", submitCheckin);
+openPhotoCameraBtn.addEventListener("click", openPhotoCamera);
+capturePhotoBtn.addEventListener("click", capturePhoto);
+retakePhotoBtn.addEventListener("click", () => {
+  resetCapturedPhoto();
+  openPhotoCamera();
+});
 
 const closeBtn = document.querySelector(".close-btn");
 
 closeBtn.addEventListener("click", () => {
   stopScanner();
+  stopPhotoCamera();
   window.history.back();
 });
 
-window.addEventListener("beforeunload", stopScanner);
+window.addEventListener("beforeunload", () => {
+  stopScanner();
+  stopPhotoCamera();
+});
 
 updateSessionBadge("ยังไม่ได้สแกน QR", false);
 renderClassInfo();
+resetCapturedPhoto();

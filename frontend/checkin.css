@@ -477,6 +477,78 @@ body {
   font-size: 18px;
 }
 
+.photo-card {
+  background: #fff;
+  border-radius: 22px;
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.18);
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+.photo-card-header {
+  margin-bottom: 14px;
+}
+
+.photo-step {
+  color: #2f61e8;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.photo-card-header h3 {
+  font-size: 20px;
+  color: #111;
+  margin-bottom: 6px;
+}
+
+.photo-note {
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.photo-preview-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #1d2330;
+  margin-bottom: 14px;
+}
+
+.photo-video,
+.captured-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.captured-image.hidden,
+.photo-placeholder.hidden {
+  display: none;
+}
+
+.photo-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 16px;
+  font-weight: 700;
+  background: linear-gradient(180deg, rgba(20, 24, 34, 0.2), rgba(20, 24, 34, 0.6));
+}
+
+.photo-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
 @media (max-width: 390px) {
   .scan-page {
     padding: 28px 14px 22px;
@@ -518,6 +590,19 @@ body {
 
   .class-card {
     border-radius: 18px;
+  }
+
+  .photo-card {
+    border-radius: 18px;
+    padding: 16px;
+  }
+
+  .photo-card-header h3 {
+    font-size: 18px;
+  }
+
+  .photo-actions {
+    grid-template-columns: 1fr;
   }
 
   .card-header {
