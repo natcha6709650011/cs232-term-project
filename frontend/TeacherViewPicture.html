@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ใบรับรองแพทย์</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-black min-h-screen flex flex-col">
+    <div class="p-4 flex justify-between items-center bg-gray-900 text-white">
+        <h1 class="text-lg">ไฟล์แนบ</h1>
+        <button onclick="window.close()" class="text-sm border px-3 py-1 rounded">ปิด</button>
+    </div>
+    <div class="flex-1 flex items-center justify-center p-2">
+        <img id="cert-image" src="https://via.placeholder.com/400x600?text=Loading..." class="max-w-full max-h-full object-contain">
+    </div>
+    <div class="p-6 bg-gray-900">
+        <button onclick="downloadImage()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold">ดาวน์โหลดรูปภาพ</button>
+    </div>
+
+    <script>
+        // ใช้ logic ที่เพื่อนส่งมาให้ เพื่อดึงรูปจาก S3
+        async function loadImage() {
+        // เดิม hardcode → แก้เป็นรับจาก URL
+        const params = new URLSearchParams(window.location.search);
+        const filePath = params.get('file_path'); // ← รับค่าจากหน้า LeaveDetail
+
+        if (!filePath) {
+            alert("ไม่พบไฟล์แนบ");
+            return;
+        }
+
+        const response = await fetch(
+            `https://w763mkyzm5.execute-api.us-east-1.amazonaws.com/default/generate-view-url?file_path=${filePath}`
+        );
+        const viewUrl = await response.text();
+        document.getElementById('cert-image').src = viewUrl;
+        }
+        loadImage();
+
+        function downloadImage() {
+            const link = document.createElement('a');
+            link.href = document.getElementById('cert-image').src;
+            link.download = 'medical-cert.jpg';
+            link.click();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>รายชื่อนักศึกษา</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-4">
+    <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
+        <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+            <h2 class="font-bold">รายชื่อเข้าเรียน (29 คน)</h2>
+            <span class="text-xs text-blue-600 font-bold">CS232 Section 650001</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-gray-50 text-gray-500 uppercase text-xs">
+                    <tr>
+                        <th class="px-4 py-3">ลำดับ</th>
+                        <th class="px-4 py-3">รหัสนักศึกษา</th>
+                        <th class="px-4 py-3">ชื่อ-นามสกุล</th>
+                        <th class="px-4 py-3">สถานะ</th>
+                    </tr>
+                </thead>
+                <tbody  id="student-table-body" class="divide-y">
+                    <tr class="hover:bg-blue-50">
+                        <td class="px-4 py-4 text-center">1</td>
+                        <td class="px-4 py-4 font-medium">6401010111</td>
+                      
+                        <td class="px-4 py-4"><span class="bg-green-100 text-green-600 px-2 py-1 rounded-md text-[10px] font-bold">เช็คชื่อแล้ว</span></td>
+                    </tr>
+                    <tr class="hover:bg-blue-50">
+                        <td class="px-4 py-4 text-center">2</td>
+                        <td class="px-4 py-4 font-medium">6401011222</td>
+                    
+                        <td class="px-4 py-4"><span class="bg-green-100 text-green-600 px-2 py-1 rounded-md text-[10px] font-bold">เช็คชื่อแล้ว</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

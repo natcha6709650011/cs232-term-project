@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>รายละเอียดการลา</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-blue-50 min-h-screen p-4">
+    <div class="bg-white rounded-3xl shadow-lg overflow-hidden border">
+        <div class="bg-blue-600 p-6 text-white text-center">
+            <h2 class="text-xl font-bold">รายละเอียดการลา</h2>
+            <p class="text-sm opacity-80" id="leave-date-course">กำลังโหลด...</p>
+        </div>
+        <div class="p-6">
+            <div class="flex items-center gap-4 mb-6">
+                <div class="w-16 h-16 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center text-2xl font-bold">ม</div>
+                <div>
+                    <h3 id="std-name" class="font-bold text-lg">กำลังโหลด...</h3></h3>
+                    <p id="std-id" class="text-gray-500 text-sm">-</p>
+                </div>
+            </div>
+            <div class="space-y-4 text-sm mb-6">
+                <div class="flex justify-between border-b pb-2">
+                    <span class="text-gray-500">ประเภท</span>
+                    <span id="leave-type" class="font-bold text-orange-500">-</span>
+                </div>
+                <div class="border-b pb-2">
+                    <p class="text-gray-500 mb-1">เหตุผล</p>
+                    <p id="leave-reason" class="font-medium text-gray-800">-</p>
+                </div>
+            </div>
+            <p class="text-sm text-gray-500 mb-2 font-bold">รูปภาพหลักฐาน</p>
+            <div class="border rounded-xl overflow-hidden mb-8 shadow-inner bg-gray-50">
+               <!-- รูปภาพ ใส่ id ให้ครบ (JS มีฟังก์ชัน fetchViewUrl แล้ว) -->
+                    <!-- TeacherLeaveDetail.html ปุ่มดูรูป -->
+<img id="evidence-img" 
+     onclick="openPhoto(currentPhotoPath)" 
+     class="w-full cursor-pointer" 
+     src="">
+            </div>
+            <div class="flex gap-4">
+                <button onclick="submitApproval('rejected')" class="flex-1 bg-red-100 text-red-600 py-3 rounded-xl font-bold border border-red-200">ไม่อนุมัติ</button>
+                <button onclick="submitApproval('approved')" class="flex-1 bg-green-500 text-white py-3 rounded-xl font-bold shadow-md">อนุมัติการลา</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
