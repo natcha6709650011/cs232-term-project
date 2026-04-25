@@ -1,5 +1,6 @@
 let myLat = null;
 let myLon = null;
+let retryCount = 0; // ตัวนับจำนวนครั้งที่ลองขอ GPS
 
 // เมื่อเปิดหน้าจอมาปุ๊บ ให้ขอ GPS ทันที (นี่คือ Step 3 ในรูป คือการขอ Consent)
 window.onload = function() {
@@ -106,5 +107,75 @@ async function downloadQRCode() {
     } catch (error) {
         console.error("ดาวน์โหลดล้มเหลว:", error);
         alert("ไม่สามารถดาวน์โหลดรูปภาพได้ กรุณาลองใหม่อีกครั้ง");
+    }
+}
+
+
+
+async function submitStep2() {
+    // จำลองสถานการณ์: สมมติว่ายิง API แล้ว Error (เช่น GPS ไม่แม่นพอ)
+    // ในอนาคตคุณจะใช้ if (response.ok) แทน
+    let isError = false; // ลองเปลี่ยนเป็น true เพื่อเทสหน้า Error
+
+    if (isError) {
+        showErrorPage();
+    } else {
+        // ถ้าสำเร็จ (ไปหน้า QR ปกติ)
+        document.getElementById('view-step-2').classList.add('hidden');
+        document.getElementById('view-step-4').classList.remove('hidden');
+        // ... (โค้ดเจน QR เดิมของคุณ) ...
+    }
+}
+
+// ฟังก์ชันซ่อนทุกหน้า (ยกเว้นที่ต้องการแสดง)
+function hideAllViews() {
+    document.getElementById('view-step-2').classList.add('hidden');
+    document.getElementById('view-step-4').classList.add('hidden');
+    document.getElementById('view-failed').classList.add('hidden');
+}
+
+function showErrorPage(forceCount = null) {
+    hideAllViews();
+    document.getElementById('view-failed').classList.remove('hidden');
+
+    if (forceCount !== null) {
+        retryCount = forceCount;
+    } else {
+        retryCount++;
+    }
+
+    const errorMsg = document.getElementById('error-msg');
+    const btnRetry = document.getElementById('btn-retry');
+
+    if (retryCount >= 3) {
+        errorMsg.innerText = "กรุณาติดต่อเจ้าหน้าที่";
+        btnRetry.innerText = "ติดต่อเจ้าหน้าที่";
+        // ป้องกัน Error ถ้าคลาสยังไม่เคยเปลี่ยน
+        btnRetry.classList.remove('bg-orange-400'); 
+        btnRetry.classList.add('bg-red-500');
+        btnRetry.onclick = () => { window.location.href = "https://line.me/ti/p/@admin_tu"; };
+    } else {
+        errorMsg.innerText = "กรุณาลองใหม่อีกครั้ง";
+        btnRetry.innerText = "ลองอีกครั้ง";
+        btnRetry.classList.remove('bg-red-500');
+        btnRetry.classList.add('bg-orange-400');
+        btnRetry.onclick = handleRetry;
+    }
+}
+
+function showStep(stepNum) {
+    hideAllViews();
+    if (stepNum === 4) {
+        document.getElementById('view-step-4').classList.remove('hidden');
+        document.getElementById('final-qr').src = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=TEST";
+    }
+}
+
+function handleRetry() {
+    if (retryCount < 3) {
+        // ถ้ายังไม่ครบ 3 ครั้ง ให้กลับไปหน้าขอ GPS ใหม่ (หน้า 2)
+        document.getElementById('view-failed').classList.add('hidden');
+        document.getElementById('view-step-2').classList.remove('hidden');
+        requestGPS(); // เรียกขอพิกัดใหม่
     }
 }

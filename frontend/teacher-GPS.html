@@ -67,8 +67,36 @@
                 font-bold active:scale-95 transition-all">เสร็จสิ้น
                  </button>
             </div>
+
+            <div id="view-failed" class="hidden p-4">
+                <div class="bg-white rounded-3xl shadow-xl p-8 text-center">
+                    <div class="flex justify-center mb-4">
+                        <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center text-3xl font-bold">✕</div>
+                </div>
+                <h2 id="error-title" class="font-bold text-xl mb-2">เริ่มคาบเรียนไม่สำเร็จ!</h2>
+                <p id="error-msg" class="text-sm text-gray-500 mb-8">กรุณาลองใหม่อีกครั้ง</p>
+        
+                <div class="flex justify-center gap-2 mb-3">
+                    <div class="border rounded-lg px-4 py-2 text-sm font-bold text-gray-700">CS232</div>
+                    <div class="border rounded-lg px-4 py-2 text-sm font-bold text-gray-700">Section 650001</div>
+                </div>
+
+                <div class="flex gap-4 mt-8">
+                    <button id="btn-retry" onclick="handleRetry()" class="flex-1 bg-orange-400 text-white py-3 rounded-xl font-bold">ลองอีกครั้ง</button>
+                    <button onclick="finishProcess()" class="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-bold">เสร็จสิ้น</button>
+                </div>
+            </div>
         </div>
     </div>
+</div>
+        </div>
+    </div>
+    //เพิ่มปุ่มทดสอบสำหรับแสดงผลลัพธ์ต่างๆ ในขั้นตอนที่ 3 และ 4 (สำหรับการทดสอบเท่านั้น ไม่ต้องใส่ในเวอร์ชันจริง)
+    <div class="fixed top-0 left-0 z-[9999] bg-black/80 p-2 flex gap-2">
+    <button onclick="showStep(4)" class="text-[10px] bg-green-500 text-white p-1 rounded">Test: Success</button>
+    <button onclick="showErrorPage(1)" class="text-[10px] bg-orange-500 text-white p-1 rounded">Test: Retry (1)</button>
+    <button onclick="showErrorPage(3)" class="text-[10px] bg-red-500 text-white p-1 rounded">Test: Contact (3)</button>
+</div>
 
     <script src="teacher-GPS.js"></script>
 </body>
