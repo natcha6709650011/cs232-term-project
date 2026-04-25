@@ -1,12 +1,17 @@
 const scanPage = document.getElementById("scanPage");
 const locationPage = document.getElementById("locationPage");
 const classInfoPage = document.getElementById("classInfoPage");
+// ADDED: หน้าใหม่สำหรับกล้อง และหน้าสรุปก่อนบันทึก
+const cameraPage = document.getElementById("cameraPage");
+const reviewPage = document.getElementById("reviewPage");
 
 const scanBtn = document.getElementById("scanBtn");
 const confirmBtn = document.getElementById("confirmBtn");
 const saveBtn = document.getElementById("saveBtn");
 const rescanBtn = document.getElementById("rescanBtn");
 const refreshLocationBtn = document.getElementById("refreshLocationBtn");
+const openCameraStepBtn = document.getElementById("openCameraStepBtn");
+const reviewRetakeBtn = document.getElementById("reviewRetakeBtn");
 
 const scannerVideo = document.getElementById("scannerVideo");
 const scanStatus = document.getElementById("scanStatus");
@@ -24,14 +29,22 @@ const timeText = document.getElementById("timeText");
 const dateText = document.getElementById("dateText");
 const sessionText = document.getElementById("sessionText");
 const coordsText = document.getElementById("coordsText");
-const openPhotoCameraBtn = document.getElementById("openPhotoCameraBtn");
 const capturePhotoBtn = document.getElementById("capturePhotoBtn");
 const retakePhotoBtn = document.getElementById("retakePhotoBtn");
+const usePhotoBtn = document.getElementById("usePhotoBtn");
 const photoVideo = document.getElementById("photoVideo");
 const capturedImage = document.getElementById("capturedImage");
 const photoPlaceholder = document.getElementById("photoPlaceholder");
 const photoCanvas = document.getElementById("photoCanvas");
 const photoStatusText = document.getElementById("photoStatusText");
+const identityStatusText = document.getElementById("identityStatusText");
+const reviewSubjectName = document.getElementById("reviewSubjectName");
+const reviewSessionText = document.getElementById("reviewSessionText");
+const reviewSectionText = document.getElementById("reviewSectionText");
+const reviewRoomText = document.getElementById("reviewRoomText");
+const reviewTimeText = document.getElementById("reviewTimeText");
+const reviewCoordsText = document.getElementById("reviewCoordsText");
+const reviewDateText = document.getElementById("reviewDateText");
 
 const API_BASE_URL = "https://9y8xshv9ek.execute-api.us-east-1.amazonaws.com";
 const UPLOAD_API_URL = "https://mxys2eeapf.execute-api.us-east-1.amazonaws.com/default/generate-upload-url";
@@ -69,7 +82,7 @@ const classData = {
 };
 
 function showPage(targetPage) {
-  [scanPage, locationPage, classInfoPage].forEach((page) => {
+  [scanPage, locationPage, classInfoPage, cameraPage, reviewPage].forEach((page) => {
     page.classList.remove("active");
   });
 
@@ -93,6 +106,20 @@ function renderClassInfo() {
   dateText.textContent = classData.date;
   sessionText.textContent = currentSessionId || "-";
   coordsText.textContent =
+    currentLatitude != null && currentLongitude != null
+      ? `${currentLatitude.toFixed(6)}, ${currentLongitude.toFixed(6)}`
+      : "-";
+}
+
+// ADDED: ใช้ render ข้อมูลชุดเดิมในหน้าสรุปก่อนบันทึก
+function renderReviewInfo() {
+  reviewSubjectName.textContent = classData.subjectName;
+  reviewSessionText.textContent = currentSessionId || "-";
+  reviewSectionText.textContent = classData.section;
+  reviewRoomText.textContent = classData.room;
+  reviewTimeText.textContent = classData.time;
+  reviewDateText.textContent = classData.date;
+  reviewCoordsText.textContent =
     currentLatitude != null && currentLongitude != null
       ? `${currentLatitude.toFixed(6)}, ${currentLongitude.toFixed(6)}`
       : "-";
@@ -155,8 +182,11 @@ function resetCapturedPhoto() {
   capturedImage.classList.add("hidden");
   photoPlaceholder.classList.remove("hidden");
   retakePhotoBtn.disabled = true;
+  usePhotoBtn.disabled = true;
+  identityStatusText.textContent = "ยังไม่ได้ถ่ายภาพยืนยันตัวตน";
 }
 
+// ADDED: เปิดกล้องหน้าเฉพาะตอนเข้า step ยืนยันตัวตน
 async function openPhotoCamera() {
   if (!navigator.mediaDevices?.getUserMedia) {
     photoStatusText.textContent = "อุปกรณ์นี้ไม่รองรับการเปิดกล้อง";
@@ -213,7 +243,9 @@ function capturePhoto() {
     capturedImage.classList.remove("hidden");
     photoPlaceholder.classList.add("hidden");
     retakePhotoBtn.disabled = false;
+    usePhotoBtn.disabled = false;
     photoStatusText.textContent = "ถ่ายภาพเรียบร้อยแล้ว พร้อมอัปโหลดก่อนเช็คชื่อ";
+    identityStatusText.textContent = "ถ่ายภาพยืนยันตัวตนเรียบร้อยแล้ว";
     stopPhotoCamera();
   }, "image/jpeg", 0.92);
 }
@@ -455,13 +487,36 @@ confirmBtn.addEventListener("click", () => {
 
   renderClassInfo();
   showPage(classInfoPage);
+});
+
+// ADDED: จากหน้าข้อมูลคาบ -> ไปหน้ากล้อง
+openCameraStepBtn.addEventListener("click", () => {
+  showPage(cameraPage);
+  resetCapturedPhoto();
   openPhotoCamera();
 });
 
 saveBtn.addEventListener("click", submitCheckin);
-openPhotoCameraBtn.addEventListener("click", openPhotoCamera);
 capturePhotoBtn.addEventListener("click", capturePhoto);
 retakePhotoBtn.addEventListener("click", () => {
+  resetCapturedPhoto();
+  openPhotoCamera();
+});
+
+// ADDED: ถ้าใช้รูปนี้แล้ว ค่อยไปหน้าสุดท้ายก่อนบันทึก
+usePhotoBtn.addEventListener("click", () => {
+  if (!currentPhotoBlob) {
+    alert("กรุณาถ่ายภาพก่อน");
+    return;
+  }
+
+  renderReviewInfo();
+  showPage(reviewPage);
+});
+
+// ADDED: จากหน้าสรุปย้อนกลับไปถ่ายรูปใหม่
+reviewRetakeBtn.addEventListener("click", () => {
+  showPage(cameraPage);
   resetCapturedPhoto();
   openPhotoCamera();
 });
