@@ -63,6 +63,14 @@ function showErrorPage(forceCount = null) {
     hideAllViews();
     document.getElementById('view-failed').classList.remove('hidden');
 
+    // หยอดข้อมูลลงในหน้า Error ให้ครบทุกช่อง
+    // ในอนาคตเพื่อน Backend จะมาเปลี่ยนค่า "CS232" เป็นตัวแปรจริงๆ
+    document.getElementById('error-course-id').innerText = "CS232"; 
+    document.getElementById('error-section').innerText = "Section 650001";
+    document.getElementById('error-time-display').innerText = "เวลา 09.30-12.30";
+
+    // ... (ส่วนนับ retryCount และเปลี่ยนสีปุ่มคงเดิม) ...
+    
     if (forceCount !== null) {
         retryCount = forceCount;
     } else {
