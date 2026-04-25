@@ -1,0 +1,222 @@
+const leaveForm = document.getElementById("leaveForm");
+const leaveDateInput = document.getElementById("leaveDate");
+const leaveNoteInput = document.getElementById("leaveNote");
+const attachmentInput = document.getElementById("attachmentInput");
+const uploadDropzone = document.getElementById("uploadDropzone");
+const filePreview = document.getElementById("filePreview");
+const filePreviewName = document.getElementById("filePreviewName");
+const filePreviewMeta = document.getElementById("filePreviewMeta");
+
+const clearBtn = document.getElementById("clearBtn");
+const previewAttachmentBtn = document.getElementById("previewAttachmentBtn");
+
+const successDialog = document.getElementById("successDialog");
+const closeSuccessBtn = document.getElementById("closeSuccessBtn");
+const openAttachmentBtn = document.getElementById("openAttachmentBtn");
+const resultDate = document.getElementById("resultDate");
+const resultReason = document.getElementById("resultReason");
+
+const viewerDialog = document.getElementById("viewerDialog");
+const closeViewerBtn = document.getElementById("closeViewerBtn");
+const viewerFileName = document.getElementById("viewerFileName");
+const viewerContent = document.getElementById("viewerContent");
+
+const reasonButtons = Array.from(document.querySelectorAll(".reason-option"));
+
+let selectedReason = "ลากิจ";
+let selectedFile = null;
+let currentObjectUrl = null;
+
+function formatDate(dateValue) {
+  if (!dateValue) return "-";
+
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return dateValue;
+
+  return date.toLocaleDateString("th-TH", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric"
+  });
+}
+
+function setDefaultDate() {
+  const now = new Date();
+  const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  leaveDateInput.value = localDate.toISOString().split("T")[0];
+}
+
+function setReason(nextReason) {
+  selectedReason = nextReason;
+
+  reasonButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.reason === nextReason);
+  });
+}
+
+function revokePreviewUrl() {
+  if (currentObjectUrl) {
+    URL.revokeObjectURL(currentObjectUrl);
+    currentObjectUrl = null;
+  }
+}
+
+function updateFilePreview(file) {
+  selectedFile = file;
+
+  if (!file) {
+    filePreview.classList.add("empty");
+    filePreviewName.textContent = "ยังไม่ได้เลือกไฟล์";
+    filePreviewMeta.textContent = "เมื่อเลือกไฟล์แล้วจะแสดงรายละเอียดที่นี่";
+    return;
+  }
+
+  filePreview.classList.remove("empty");
+  filePreviewName.textContent = file.name;
+  filePreviewMeta.textContent = `${file.type || "ไม่ทราบประเภทไฟล์"} • ${Math.max(1, Math.round(file.size / 1024))} KB`;
+}
+
+function openDialog(dialog) {
+  if (typeof dialog.showModal === "function") {
+    dialog.showModal();
+  } else {
+    dialog.setAttribute("open", "open");
+  }
+}
+
+function closeDialog(dialog) {
+  if (typeof dialog.close === "function") {
+    dialog.close();
+  } else {
+    dialog.removeAttribute("open");
+  }
+}
+
+function renderAttachmentViewer() {
+  revokePreviewUrl();
+  viewerContent.innerHTML = "";
+  viewerContent.classList.remove("empty");
+
+  if (!selectedFile) {
+    viewerFileName.textContent = "ยังไม่มีไฟล์แนบ";
+    viewerContent.classList.add("empty");
+    viewerContent.innerHTML = "<p>ยังไม่มีไฟล์ให้แสดงตัวอย่าง</p>";
+    return;
+  }
+
+  viewerFileName.textContent = selectedFile.name;
+  currentObjectUrl = URL.createObjectURL(selectedFile);
+
+  if (selectedFile.type.startsWith("image/")) {
+    const image = document.createElement("img");
+    image.src = currentObjectUrl;
+    image.alt = selectedFile.name;
+    viewerContent.appendChild(image);
+    return;
+  }
+
+  const frame = document.createElement("iframe");
+  frame.src = currentObjectUrl;
+  frame.title = selectedFile.name;
+  viewerContent.appendChild(frame);
+}
+
+function resetForm() {
+  leaveForm.reset();
+  setDefaultDate();
+  setReason("ลากิจ");
+  updateFilePreview(null);
+}
+
+function handleFileSelection(file) {
+  if (!file) {
+    updateFilePreview(null);
+    return;
+  }
+
+  const isAcceptedType = [
+    "image/jpeg",
+    "image/png",
+    "application/pdf"
+  ].includes(file.type) || /\.(jpe?g|png|pdf)$/i.test(file.name);
+
+  if (!isAcceptedType) {
+    alert("กรุณาแนบไฟล์ JPG, PNG หรือ PDF เท่านั้น");
+    attachmentInput.value = "";
+    updateFilePreview(null);
+    return;
+  }
+
+  updateFilePreview(file);
+}
+
+reasonButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    setReason(button.dataset.reason);
+  });
+});
+
+attachmentInput.addEventListener("change", (event) => {
+  const [file] = event.target.files;
+  handleFileSelection(file || null);
+});
+
+uploadDropzone.addEventListener("dragover", (event) => {
+  event.preventDefault();
+  uploadDropzone.classList.add("dragover");
+});
+
+uploadDropzone.addEventListener("dragleave", () => {
+  uploadDropzone.classList.remove("dragover");
+});
+
+uploadDropzone.addEventListener("drop", (event) => {
+  event.preventDefault();
+  uploadDropzone.classList.remove("dragover");
+  const [file] = event.dataTransfer.files;
+  handleFileSelection(file || null);
+});
+
+leaveForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  resultDate.textContent = formatDate(leaveDateInput.value);
+  resultReason.textContent = selectedReason;
+
+  console.log("Leave request payload (mock):", {
+    leave_date: leaveDateInput.value,
+    reason: selectedReason,
+    note: leaveNoteInput.value.trim(),
+    attachment_name: selectedFile ? selectedFile.name : null
+  });
+
+  openDialog(successDialog);
+});
+
+clearBtn.addEventListener("click", resetForm);
+
+previewAttachmentBtn.addEventListener("click", () => {
+  renderAttachmentViewer();
+  openDialog(viewerDialog);
+});
+
+openAttachmentBtn.addEventListener("click", () => {
+  closeDialog(successDialog);
+  renderAttachmentViewer();
+  openDialog(viewerDialog);
+});
+
+closeViewerBtn.addEventListener("click", () => {
+  closeDialog(viewerDialog);
+});
+
+closeSuccessBtn.addEventListener("click", () => {
+  closeDialog(successDialog);
+});
+
+viewerDialog.addEventListener("close", revokePreviewUrl);
+window.addEventListener("beforeunload", revokePreviewUrl);
+
+setDefaultDate();
+setReason(selectedReason);
+updateFilePreview(null);

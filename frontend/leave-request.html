@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leave Request</title>
+  <link rel="stylesheet" href="leave-request.css" />
+</head>
+<body>
+  <main class="leave-page">
+    <section class="form-panel">
+      <div class="form-shell">
+        <div class="form-header">
+          <div class="header-copy">
+            <p class="section-kicker">TU Class</p>
+          </div>
+        </div>
+
+        <div class="form-body">
+          <h1 class="form-title">แจ้งลา</h1>
+          <p class="form-intro">กรอกข้อมูลและแนบเอกสารผ่านหน้าเว็บได้โดยตรง</p>
+
+          <form id="leaveForm" class="leave-form">
+            <div class="compact-grid">
+              <label class="field">
+                <span>วันที่ลา</span>
+                <input id="leaveDate" type="date" required />
+              </label>
+
+              <div class="field">
+                <span>ประเภทการลา</span>
+                <div class="reason-switch">
+                  <button class="reason-option active" type="button" data-reason="ลากิจ">ลากิจ</button>
+                  <button class="reason-option" type="button" data-reason="ลาป่วย">ลาป่วย</button>
+                </div>
+              </div>
+            </div>
+
+            <label class="field">
+              <span>รายละเอียดเพิ่มเติม</span>
+              <textarea
+                id="leaveNote"
+                rows="6"
+                placeholder="อธิบายสาเหตุการลา หรือระบุรายละเอียดเอกสารประกอบ"
+              ></textarea>
+            </label>
+
+            <section class="upload-card">
+              <div class="upload-copy">
+                <p class="upload-title">เอกสารประกอบการลา</p>
+                <p class="upload-subtitle">กดเลือกไฟล์หรือวางไฟล์จากเครื่อง</p>
+              </div>
+
+              <label id="uploadDropzone" class="upload-dropzone" for="attachmentInput">
+                <input
+                  id="attachmentInput"
+                  class="hidden-input"
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+                />
+                <span class="upload-icon">+</span>
+                <strong>เลือกไฟล์แนบ</strong>
+                <small>รองรับ JPG / PNG / PDF</small>
+              </label>
+
+              <div id="filePreview" class="file-preview empty">
+                <p id="filePreviewName" class="file-name">ยังไม่ได้เลือกไฟล์</p>
+                <p id="filePreviewMeta" class="file-meta">เมื่อเลือกไฟล์แล้วจะแสดงรายละเอียดที่นี่</p>
+              </div>
+            </section>
+
+            <div class="sub-action-row">
+              <button id="previewAttachmentBtn" class="secondary-btn compact-btn" type="button">
+                ดูตัวอย่างไฟล์
+              </button>
+              <button id="clearBtn" class="secondary-btn" type="button">ล้างข้อมูล</button>
+            </div>
+
+            <button id="submitLeaveBtn" class="primary-btn submit-btn" type="submit">ส่งคำขอ</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="successDialog" class="modal">
+    <div class="modal-card">
+      <p class="section-kicker">Request Sent</p>
+      <h3>ส่งคำขอเรียบร้อยแล้ว</h3>
+      <div class="summary-list">
+        <p><strong>วันที่ลา:</strong> <span id="resultDate">-</span></p>
+        <p><strong>ประเภท:</strong> <span id="resultReason">-</span></p>
+      </div>
+      <div class="modal-actions">
+        <button id="openAttachmentBtn" class="secondary-btn" type="button">เปิดไฟล์แนบ</button>
+        <button id="closeSuccessBtn" class="primary-btn" type="button">เสร็จสิ้น</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="viewerDialog" class="modal viewer-modal">
+    <div class="modal-card viewer-card">
+      <div class="viewer-header">
+        <div>
+          <p class="viewer-kicker">Attachment Preview</p>
+          <h3 id="viewerFileName">ยังไม่มีไฟล์แนบ</h3>
+        </div>
+        <button id="closeViewerBtn" class="viewer-close-icon" type="button" aria-label="ปิด">×</button>
+      </div>
+      <div id="viewerContent" class="viewer-content empty">
+        <div class="viewer-empty-state">
+          <div class="viewer-empty-icon">+</div>
+          <p class="viewer-empty-title">ยังไม่มีไฟล์ให้แสดงตัวอย่าง</p>
+          <p class="viewer-empty-text">เลือกไฟล์จากแบบฟอร์มก่อน แล้วค่อยกลับมาดูตัวอย่างที่นี่</p>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="leave-request.js"></script>
+</body>
+</html>
