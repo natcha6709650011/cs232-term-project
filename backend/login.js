@@ -2,11 +2,16 @@ require("dotenv").config();
 const axios = require("axios");
 const { response, getBody, dynamodb } = require("./common");
 
-const USERS_TABLE = "Users";
+// ชื่อตาราง Users
+const USERS_TABLE = process.env.USERS_TABLE || "Users";
+
+// ชื่อ GSI ที่ใช้ค้นหาด้วย username
+// ต้องให้คนทำ DB สร้าง GSI นี้ใน DynamoDB ด้วย
+const USERNAME_INDEX = process.env.USERNAME_INDEX || "username-index";
 
 exports.handler = async (event) => {
   try {
-    //อ่านข้อมูลจาก request
+    // อ่านข้อมูลจาก request
     const body = getBody(event);
 
     const {
@@ -15,7 +20,7 @@ exports.handler = async (event) => {
       password      // password ของ account
     } = body;
 
-    //เช็คว่าข้อมูลมาครบไหม
+    // เช็คว่าข้อมูลมาครบไหม
     if (!line_user_id || !username || !password) {
       return response(400, {
         success: false,
@@ -23,7 +28,7 @@ exports.handler = async (event) => {
       });
     }
 
-    //ยิงไปที่ TU API เพื่อตรวจสอบตัวตน
+    // ยิงไปที่ TU API เพื่อตรวจสอบตัวตน
     const tuRes = await axios.post(
       "https://restapi.tu.ac.th/api/v1/auth/Ad/verify",
       {
@@ -33,20 +38,19 @@ exports.handler = async (event) => {
       {
         headers: {
           "Content-Type": "application/json",
-          //token ต้องเก็บใน environment variable
           "Application-Key": process.env.TU_APP_KEY
         },
         timeout: 10000
       }
     );
 
-    //ข้อมูลที่ TU API ส่งกลับมา
+    // ข้อมูลที่ TU API ส่งกลับมา
     const tuData = tuRes.data;
 
-    //ดูใน CloudWatch ว่า API ส่ง field อะไรมาบ้าง
+    // log ไว้ดูใน CloudWatch ว่า TU API ส่ง field อะไรมาบ้าง
     console.log("TU API RESPONSE:", JSON.stringify(tuData));
 
-    //ถ้า login ไม่ผ่าน
+    // ถ้า login ไม่ผ่าน
     if (!tuData.status) {
       return response(401, {
         success: false,
@@ -54,19 +58,79 @@ exports.handler = async (event) => {
       });
     }
 
+    // --------------------------------------------------
+    // Anti-cheating validation:
+    // 1 university account = 1 LINE ID
+    // 1 LINE ID = 1 university account
+    // --------------------------------------------------
+
+    // 1) ตรวจว่า LINE ID นี้เคยผูกกับ username อื่นแล้วหรือไม่
+    const existingLineUser = await dynamodb
+      .get({
+        TableName: USERS_TABLE,
+        Key: {
+          line_user_id
+        }
+      })
+      .promise();
+
+    // ถ้า LINE ID นี้มีอยู่แล้ว แต่ username ไม่ตรงกับ username ที่ login ครั้งนี้
+    // แปลว่า LINE เดิมพยายาม login เป็นบัญชีมหาลัยคนอื่น
+    if (
+      existingLineUser.Item &&
+      existingLineUser.Item.username !== username
+    ) {
+      return response(409, {
+        success: false,
+        message: "this LINE account is already linked to another university account"
+      });
+    }
+
+    // 2) ตรวจว่า username นี้เคยผูกกับ LINE ID อื่นแล้วหรือไม่
+    // ต้องมี GSI: username-index ก่อนถึงจะ query ได้
+    const existingUsername = await dynamodb
+      .query({
+        TableName: USERS_TABLE,
+        IndexName: USERNAME_INDEX,
+        KeyConditionExpression: "username = :username",
+        ExpressionAttributeValues: {
+          ":username": username
+        }
+      })
+      .promise();
+
+    // ถ้า username นี้เคยถูกใช้แล้ว แต่ line_user_id ไม่ตรงกับคนที่ login ครั้งนี้
+    // แปลว่า account มหาลัยเดิมกำลังถูกเอาไป login ด้วย LINE อื่น
+    if (
+      existingUsername.Items &&
+      existingUsername.Items.length > 0 &&
+      existingUsername.Items[0].line_user_id !== line_user_id
+    ) {
+      return response(409, {
+        success: false,
+        message: "this university account is already linked to another LINE account"
+      });
+    }
+
     // map role
     // ถ้าเป็น employee ให้ถือเป็น teacher
-    // ถ้าเป็น student ให้ถือเป็น student
+    // ถ้าไม่ใช่ employee ให้ถือเป็น student
     let role = "student";
+
     if (tuData.type === "employee") {
       role = "teacher";
     }
 
-    //เตรียม object user ที่จะเก็บลง DynamoDB
+    // เตรียม object user ที่จะเก็บลง DynamoDB
     const userItem = {
-      line_user_id, // ใช้เป็น primary identifier ในระบบเรา
-      username,     // account ที่ใช้ login
-      role,         // teacher / student
+      // ใช้เป็น primary key ใน Users table
+      line_user_id,
+
+      // account มหาวิทยาลัยที่ login
+      username,
+
+      // role ในระบบเรา
+      role,
 
       // ข้อมูลที่ดึงได้จาก TU API
       type: tuData.type || null,
@@ -81,13 +145,16 @@ exports.handler = async (event) => {
       updated_at: new Date().toISOString()
     };
 
-    //บันทึก user ลง Users table
-    await dynamodb.put({
-      TableName: USERS_TABLE,
-      Item: userItem
-    }).promise();
+    // บันทึก user ลง Users table
+    // ถ้าเป็น LINE เดิม + username เดิม จะ update profile ได้
+    await dynamodb
+      .put({
+        TableName: USERS_TABLE,
+        Item: userItem
+      })
+      .promise();
 
-    //ส่งผลกลับ frontend
+    // ส่งผลกลับ frontend
     return response(200, {
       success: true,
       message: "login success",
@@ -96,7 +163,6 @@ exports.handler = async (event) => {
         profile: userItem
       }
     });
-
   } catch (error) {
     console.error("LOGIN ERROR:", error.response?.data || error.message);
 
