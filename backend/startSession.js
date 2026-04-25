@@ -1,41 +1,102 @@
-const { response, getBody, dynamodb, haversineDistanceMeters } = require("./common");
+// import helper จากไฟล์ common.js
+// response = ใช้สร้าง HTTP response
+// getBody = ใช้แปลง event.body ให้เป็น object
+// dynamodb = DynamoDB DocumentClient ที่ตั้งค่าไว้ใน common.js
+const { response, getBody, dynamodb } = require("./common");
 
+// import uuidv4 สำหรับสร้าง session_id แบบไม่ซ้ำ
+const { v4: uuidv4 } = require("uuid");
+
+// กำหนดชื่อตาราง Users จาก environment variable
+// ถ้าไม่มี env จะใช้ชื่อ "Users"
 const USERS_TABLE = process.env.USERS_TABLE || "Users";
+
+// กำหนดชื่อตาราง Sessions จาก environment variable
+// ถ้าไม่มี env จะใช้ชื่อ "Sessions"
 const SESSIONS_TABLE = process.env.SESSIONS_TABLE || "Sessions";
-const ATTENDANCE_TABLE = process.env.ATTENDANCE_TABLE || "Attendance";
 
-const CHECKIN_RADIUS_METERS = 50; // รัศมีเช็คอิน 50 เมตร
-
+// Lambda handler หลักของไฟล์ startSession
 exports.handler = async (event) => {
   try {
-    // อ่านข้อมูลจาก request
+    // แปลง body ที่ frontend ส่งมาให้เป็น object
     const body = getBody(event);
 
+    // ดึงข้อมูลจาก body
     const {
-      line_user_id, // line user id ของนักศึกษา
-      session_id,   // id ของ session ที่จะเช็คอิน
-      latitude,     // พิกัดตอนเช็คอิน
-      longitude,    // พิกัดตอนเช็คอิน
-      image_url     // รูปภาพตอนเช็คอิน
+      // LINE user id ของอาจารย์
+      line_user_id,
+
+      // ประเภท session: onsite / online / cancel
+      type,
+
+      // latitude ของอาจารย์ ใช้เฉพาะ onsite
+      latitude,
+
+      // longitude ของอาจารย์ ใช้เฉพาะ onsite
+      longitude,
+
+      // class_id ของคาบเรียน อาจส่งมาจาก frontend teacher
+      class_id,
+
+      // รหัสวิชา เช่น CS232
+      course_id,
+
+      // ชื่อวิชา
+      course_name,
+
+      // section ของวิชา
+      section,
+
+      // เวลาเริ่มเรียนตามตาราง
+      start_time,
+
+      // เวลาจบเรียนตามตาราง
+      end_time,
+
+      // จำนวนนักศึกษาในคลาส
+      student_count
     } = body;
 
-    // เช็คข้อมูลพื้นฐาน
-    if (!line_user_id || !session_id) {
+    // ตรวจว่ามีข้อมูลหลักครบหรือไม่
+    // สำหรับ test เดิมจะมีแค่ line_user_id, type, latitude, longitude
+    // จึงยังไม่บังคับ class_id เพื่อไม่ให้ frontend/test พัง
+    if (!line_user_id || !type) {
       return response(400, {
         success: false,
-        message: "missing line_user_id or session_id"
+        message: "missing line_user_id or type"
       });
     }
 
-    // ดึง user จาก Users table
-    const userResult = await dynamodb.get({
-      TableName: USERS_TABLE,
-      Key: { line_user_id }
-    }).promise();
+    // ตรวจว่า type เป็นค่าที่ระบบรองรับหรือไม่
+    if (!["onsite", "online", "cancel"].includes(type)) {
+      return response(400, {
+        success: false,
+        message: "invalid session type"
+      });
+    }
 
+    // ถ้าเป็น onsite ต้องส่งตำแหน่งอาจารย์มาด้วย
+    if (type === "onsite" && (latitude == null || longitude == null)) {
+      return response(400, {
+        success: false,
+        message: "onsite class must have latitude and longitude"
+      });
+    }
+
+    // ดึงข้อมูลผู้ใช้จาก Users table ด้วย line_user_id
+    const userResult = await dynamodb
+      .get({
+        TableName: USERS_TABLE,
+        Key: {
+          line_user_id
+        }
+      })
+      .promise();
+
+    // user คือข้อมูลผู้ใช้ที่ได้จาก DynamoDB
     const user = userResult.Item;
 
-    // ไม่เจอ user
+    // ถ้าไม่พบ user แปลว่ายังไม่ได้ login หรือยังไม่ถูกบันทึกในระบบ
     if (!user) {
       return response(404, {
         success: false,
@@ -43,164 +104,121 @@ exports.handler = async (event) => {
       });
     }
 
-    // ต้องเป็น student เท่านั้น
-    if (user.role !== "student") {
+    // ตรวจสอบว่า user นี้เป็นอาจารย์หรือไม่
+    // เฉพาะ role teacher เท่านั้นที่เริ่ม session ได้
+    if (user.role !== "teacher") {
       return response(403, {
         success: false,
-        message: "only students can check in"
+        message: "only teacher can start session"
       });
     }
 
-    // ดึง session จาก Sessions table
-    const sessionResult = await dynamodb.get({
-      TableName: SESSIONS_TABLE,
-      Key: { session_id }
-    }).promise();
+    // ใช้ line_user_id เป็น teacher_id
+    const teacher_id = line_user_id;
 
-    const session = sessionResult.Item;
+    // สร้าง session_id ใหม่แบบ unique
+    const session_id = uuidv4();
 
-    // ไม่เจอ session
-    if (!session) {
-      return response(404, {
-        success: false,
-        message: "session not found"
-      });
-    }
+    // เวลาปัจจุบัน หน่วยเป็น milliseconds
+    const now = Date.now();
 
-    // เช็คสถานะ session
-    if (session.status === "cancelled") {
-      return response(400, {
-        success: false,
-        message: "class is cancelled"
-      });
-    }
+    // กำหนดเวลาหมดอายุ session = ตอนนี้ + 30 นาที
+    const expire_at = now + 30 * 60 * 1000;
 
-    if (session.status !== "active") {
-      return response(400, {
-        success: false,
-        message: "session is not active"
-      });
-    }
+    // ถ้า type เป็น cancel ให้ status เป็น cancelled
+    // ถ้า onsite หรือ online ให้เป็น active
+    const status = type === "cancel" ? "cancelled" : "active";
 
-    // session หมดเวลาแล้ว
-    if (Date.now() > session.expire_at) {
-      return response(400, {
-        success: false,
-        message: "session has expired"
-      });
-    }
-
-    // กันเช็คซ้ำ
-    // Attendance table ใช้ PK = session_id, SK = line_user_id
-    const existingAttendance = await dynamodb.get({
-      TableName: ATTENDANCE_TABLE,
-      Key: {
-        session_id,
-        line_user_id
-      }
-    }).promise();
-
-    if (existingAttendance.Item) {
-      return response(409, {
-        success: false,
-        message: "already checked in"
-      });
-    }
-
-    // ต้องมีรูปเสมอ
-    if (!image_url) {
-      return response(400, {
-        success: false,
-        message: "image_url is required"
-      });
-    }
-
-    // ถ้าเป็น onsite ต้องเช็คระยะ
-    if (session.type === "onsite") {
-      // ต้องมี location ของนักศึกษา
-      if (latitude == null || longitude == null) {
-        return response(400, {
-          success: false,
-          message: "onsite check-in requires latitude and longitude"
-        });
-      }
-
-      // ต้องมี location ของอาจารย์ใน session
-      if (session.latitude == null || session.longitude == null) {
-        return response(500, {
-          success: false,
-          message: "teacher location not found in session"
-        });
-      }
-
-      // คำนวณระยะทางระหว่างพิกัดอาจารย์กับนักศึกษา
-      const distance = haversineDistanceMeters(
-        session.latitude,
-        session.longitude,
-        latitude,
-        longitude
-      );
-
-      // ตรวจสอบว่าอยู่ในรัศมี 50 เมตรหรือไม่
-      if (distance > CHECKIN_RADIUS_METERS) {
-        return response(400, {
-          success: false,
-          message: "out of allowed range",
-          data: {
-            distance_meters: Math.round(distance),
-            allowed_meters: CHECKIN_RADIUS_METERS
-          }
-        });
-      }
-    }
-
-    // เตรียมข้อมูล attendance ที่จะบันทึก
-    const attendanceItem = {
+    // เตรียมข้อมูล session สำหรับบันทึกลง Sessions table
+    const sessionItem = {
+      // primary key ของ Sessions table
       session_id,
-      line_user_id,
 
-      // ข้อมูลนักศึกษา
-      student_username: user.username || null,
-      student_name: user.name_th || user.name_en || user.username || null,
-      student_email: user.email || null,
+      // ข้อมูลอาจารย์
+      teacher_id,
+      teacher_line_user_id: line_user_id,
+      teacher_name: user.name_th || user.name_en || user.username || null,
 
-      // ข้อมูลคาบ
-      class_id: session.class_id || null,
-      course_id: session.course_id || null,
-      course_name: session.course_name || null,
-      section: session.section || null,
+      // ข้อมูลคลาส/วิชา
+      // ถ้า frontend ยังไม่ส่งมา ให้ใส่ค่า default เพื่อให้ระบบไม่พัง
+      class_id: class_id || "mock-class",
+      course_id: course_id || null,
+      course_name: course_name || null,
+      section: section || null,
+      start_time: start_time || null,
+      end_time: end_time || null,
+      student_count: student_count || 0,
 
-      // ผลการเช็คชื่อ
-      status: "present",
+      // ข้อมูล session
+      type,
+      status,
 
-      // ตำแหน่งและรูปภาพ
-      latitude: latitude ?? null,
-      longitude: longitude ?? null,
-      image_url,
+      // onsite เท่านั้นที่บันทึกพิกัดอาจารย์
+      latitude: type === "onsite" ? Number(latitude) : null,
+      longitude: type === "onsite" ? Number(longitude) : null,
 
-      // เวลาเช็คชื่อ
-      checkin_time: Date.now()
+      // เวลาที่สร้าง session
+      created_at: now,
+
+      // เวลาที่ session หมดอายุ
+      expire_at
     };
 
-    // บันทึกลง DynamoDB
-    await dynamodb.put({
-      TableName: ATTENDANCE_TABLE,
-      Item: attendanceItem
-    }).promise();
+    // บันทึกข้อมูล session ลง DynamoDB ตาราง Sessions
+    await dynamodb
+      .put({
+        TableName: SESSIONS_TABLE,
+        Item: sessionItem
+      })
+      .promise();
 
-    // ส่ง response กลับ
+    // สร้าง check-in link ให้ student ใช้เปิด LIFF เพื่อเช็คชื่อ
+    // ถ้า cancel จะไม่มี link
+    const checkin_link =
+      type === "cancel"
+        ? null
+        : `https://your-liff-url.com/checkin?session_id=${session_id}`; //รอปรับ URL ให้ตรงกับ LIFF ที่สร้างจริง
+
+    // ส่ง response กลับไปให้ frontend teacher
     return response(200, {
       success: true,
-      message: "check-in success",
-      data: attendanceItem
+      message: type === "cancel" ? "class cancelled" : "session created",
+      data: {
+        // session id ที่ frontend / LINE Bot ต้องใช้ต่อ
+        session_id,
+
+        // ข้อมูลอาจารย์
+        teacher_id,
+        teacher_line_user_id: line_user_id,
+        teacher_name: sessionItem.teacher_name,
+
+        // ข้อมูลคลาส
+        class_id: sessionItem.class_id,
+        course_id: sessionItem.course_id,
+        course_name: sessionItem.course_name,
+        section: sessionItem.section,
+
+        // ข้อมูล session
+        type,
+        status,
+        latitude: sessionItem.latitude,
+        longitude: sessionItem.longitude,
+        created_at: now,
+        expire_at,
+
+        // link สำหรับเช็คชื่อ
+        checkin_link
+      }
     });
-
   } catch (error) {
-    console.error("CHECK-IN ERROR:", error);
+    // log error ลง CloudWatch เพื่อ debug
+    console.error("startSession error:", error);
 
+    // ส่ง response กรณี server error
     return response(500, {
       success: false,
-      message: "internal server error"
+      message: "internal server error",
+      error: error.message
     });
   }
 };
