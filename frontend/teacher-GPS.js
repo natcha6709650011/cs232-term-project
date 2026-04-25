@@ -52,8 +52,59 @@ function closeError() {
     document.getElementById('view-step-3-error').classList.add('hidden');
 }
 
+// teacher-GPS.js (Update)
+
+// --- ฟังก์ชันที่มีอยู่แล้ว (ทวนให้เฉยๆ) ---
 function finishProcess() {
-    alert("ระบบกำลังปิดหน้าจอ...");
-    // liff.closeWindow(); // ถ้าเชื่อม LINE แล้วใช้คำสั่งนี้
+    // แก้ไข: จากเดิมแค่ alert ให้เป็นคำสั่งปิดจริงๆ
+    console.log("ปิดหน้าต่างหน้าจอ");
+    if (typeof liff !== 'undefined' && liff.isInClient()) {
+        liff.closeWindow(); // ปิดหน้าต่างภายในแอป LINE
+    } else {
+        window.close(); // ปิด Tab ธรรมดา (อาจจะไม่ทำงานในบาง Browser ถ้าไม่ได้เปิดด้วย script)
+        alert("ปิดหน้าต่างสำเร็จ (ถ้าอยู่ในแอป LINE หน้าต่างจะปิดทันที)");
+    }
 }
 
+
+// --- ฟังก์ชันที่ต้องเพิ่มใหม่ (New) ---
+
+// ฟังก์ชันสำหรับดาวน์โหลดรูป QR Code (สำหรับปุ่ม "บันทึก")
+async function downloadQRCode() {
+    console.log("กำลังดาวน์โหลด QR Code...");
+    const qrImage = document.getElementById('final-qr');
+    const courseId = document.getElementById('res-course-id').innerText || "CS232";
+    
+    if (!qrImage.src) {
+        alert("ไม่พบรูป QR Code");
+        return;
+    }
+
+    try {
+        // 1. ดึงข้อมูลรูปภาพจาก URL
+        const response = await fetch(qrImage.src);
+        const blob = await response.blob(); // แปลงเป็นข้อมูล Blob
+        
+        // 2. สร้างลิงก์ชั่วคราวสำหรับดาวน์โหลด
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        
+        // 3. ตั้งชื่อไฟล์ (เช่น CS232_QRCode.png)
+        a.download = `${courseId}_QRCode.png`;
+        
+        // 4. สั่งคลิกลิงก์เพื่อดาวน์โหลด
+        document.body.appendChild(a);
+        a.click();
+        
+        // 5. ล้างข้อมูลชั่วคราว
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        console.log("ดาวน์โหลดสำเร็จ");
+    } catch (error) {
+        console.error("ดาวน์โหลดล้มเหลว:", error);
+        alert("ไม่สามารถดาวน์โหลดรูปภาพได้ กรุณาลองใหม่อีกครั้ง");
+    }
+}
