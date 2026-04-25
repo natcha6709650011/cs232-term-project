@@ -1,4 +1,9 @@
 const API_BASE_URL = "https://9y8xshv9ek.execute-api.us-east-1.amazonaws.com";
+const LIFF_ID = "2009731150-FBugBxC4";
+
+// ถ้า test นอก LINE/LIFF จะใช้ mock คงที่
+// อย่าใช้ Date.now() เพราะ backend ผูก 1 account : 1 LINE ID
+const MOCK_LINE_USER_ID = "mock-line-student-001";
 
 const loginForm = document.getElementById("loginForm");
 const usernameInput = document.getElementById("studentId");
@@ -13,20 +18,54 @@ const closeFailBtn = document.getElementById("closeFailBtn");
 
 let pendingRole = null;
 
-function getLineUserId() {
-  const savedLineUserId = localStorage.getItem("line_user_id");
-  if (savedLineUserId) return savedLineUserId;
+/**
+ * ดึง line_user_id
+ * 1. ถ้ามี LIFF SDK → ใช้ LINE userId จริง
+ * 2. ถ้ามี line_user_id ใน URL → ใช้จาก URL
+ * 3. ถ้ามีใน localStorage → ใช้ค่าเดิม
+ * 4. ถ้าไม่มีอะไรเลย → ใช้ mock คงที่สำหรับ test
+ */
+async function getLineUserId() {
+  // ถ้าเปิดผ่าน LIFF และมี liff sdk
+  if (typeof liff !== "undefined") {
+    try {
+      await liff.init({ liffId: LIFF_ID });
 
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return null;
+      }
+
+      const profile = await liff.getProfile();
+
+      if (profile && profile.userId) {
+        localStorage.setItem("line_user_id", profile.userId);
+        return profile.userId;
+      }
+    } catch (error) {
+      console.warn("LIFF init/getProfile failed, fallback to mock/query/localStorage:", error);
+    }
+  }
+
+  // เผื่อ test โดยส่ง line_user_id ผ่าน query string
   const params = new URLSearchParams(window.location.search);
   const queryLineUserId = params.get("line_user_id");
+
   if (queryLineUserId) {
     localStorage.setItem("line_user_id", queryLineUserId);
     return queryLineUserId;
   }
 
-  const mockLineUserId = `mock-line-${Date.now()}`;
-  localStorage.setItem("line_user_id", mockLineUserId);
-  return mockLineUserId;
+  // ใช้ line_user_id เดิมที่เคยเก็บไว้
+  const savedLineUserId = localStorage.getItem("line_user_id");
+
+  if (savedLineUserId) {
+    return savedLineUserId;
+  }
+
+  // mock สำหรับ test นอก LIFF
+  localStorage.setItem("line_user_id", MOCK_LINE_USER_ID);
+  return MOCK_LINE_USER_ID;
 }
 
 function setSubmitting(isSubmitting) {
@@ -54,7 +93,39 @@ function goToNextPage() {
     return;
   }
 
-  window.location.href = "checkin.html";
+  if (pendingRole === "student") {
+    window.location.href = "checkin.html";
+    return;
+  }
+
+  failMessage.textContent = "ไม่พบสิทธิ์ผู้ใช้งาน";
+  openOverlay(failOverlay);
+}
+
+function getFriendlyErrorMessage(result, fallbackMessage) {
+  const message = result?.message || result?.detail || fallbackMessage;
+
+  if (message === "this LINE account is already linked to another university account") {
+    return "LINE นี้ถูกผูกกับบัญชีมหาวิทยาลัยอื่นแล้ว";
+  }
+
+  if (message === "this university account is already linked to another LINE account") {
+    return "บัญชีนี้ถูกผูกกับ LINE อื่นแล้ว";
+  }
+
+  if (message === "login failed") {
+    return "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง";
+  }
+
+  if (message === "missing line_user_id, username or password") {
+    return "กรุณากรอกชื่อผู้ใช้และรหัสผ่าน";
+  }
+
+  if (message === "internal server error") {
+    return "ระบบขัดข้อง กรุณาลองใหม่อีกครั้ง";
+  }
+
+  return message || "เข้าสู่ระบบไม่สำเร็จ";
 }
 
 async function submitLogin(event) {
@@ -69,14 +140,21 @@ async function submitLogin(event) {
     return;
   }
 
-  const payload = {
-    line_user_id: getLineUserId(),
-    username,
-    password
-  };
-
   try {
     setSubmitting(true);
+
+    const line_user_id = await getLineUserId();
+
+    // กรณี liff.login() redirect ออกไปแล้ว
+    if (!line_user_id) {
+      return;
+    }
+
+    const payload = {
+      line_user_id,
+      username,
+      password
+    };
 
     const response = await fetch(`${API_BASE_URL}/login`, {
       method: "POST",
@@ -86,14 +164,33 @@ async function submitLogin(event) {
       body: JSON.stringify(payload)
     });
 
-    const result = await response.json();
+    let result = null;
+
+    try {
+      result = await response.json();
+    } catch (jsonError) {
+      throw new Error("ไม่สามารถอ่าน response จาก server ได้");
+    }
+
+    console.log("LOGIN RESPONSE:", result);
 
     if (!response.ok || !result.success) {
-      throw new Error(result.message || "เข้าสู่ระบบไม่สำเร็จ");
+      const errorMessage = getFriendlyErrorMessage(
+        result,
+        "เข้าสู่ระบบไม่สำเร็จ"
+      );
+
+      throw new Error(errorMessage);
+    }
+
+    if (!result.data || !result.data.role || !result.data.profile) {
+      throw new Error("รูปแบบข้อมูลจาก backend ไม่ถูกต้อง");
     }
 
     pendingRole = result.data.role;
+
     saveLoginResult(result.data.profile, result.data.role);
+
     openOverlay(successOverlay);
   } catch (error) {
     console.error("login error:", error);
@@ -107,7 +204,8 @@ async function submitLogin(event) {
 loginForm.addEventListener("submit", submitLogin);
 
 continueBtn.addEventListener("click", goToNextPage);
+
 closeFailBtn.addEventListener("click", () => {
   closeOverlay(failOverlay);
-  failMessage.textContent = "โปรดตรวจสอบผู้ใช้และรหัสผ่าน";
+  failMessage.textContent = "โปรดตรวจสอบชื่อผู้ใช้และรหัสผ่าน";
 });
