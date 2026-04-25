@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://9y8xshv9ek.execute-api.us-east-1.amazonaws.com";
+const API_BASE_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com";
 const LIFF_ID = "2009731150-FBugBxC4";
 
 // ถ้า test นอก LINE/LIFF จะใช้ mock คงที่
