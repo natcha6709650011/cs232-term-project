@@ -177,7 +177,7 @@ exports.handler = async (event) => {
     const checkin_link =
       type === "cancel"
         ? null
-        : `https://your-liff-url.com/checkin?session_id=${session_id}`; //รอปรับ URL ให้ตรงกับ LIFF ที่สร้างจริง
+        : `https://liff.line.me/2009731150-FBugBxC4?session_id=${session_id}`; //url นี้ตั้งค่าใน LIFF ของ LINE Developer Console
 
     // ส่ง response กลับไปให้ frontend teacher
     return response(200, {
