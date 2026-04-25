@@ -109,32 +109,74 @@
             </div>
           </div>
 
-          <div class="photo-card">
-            <div class="photo-card-header">
-              <p class="photo-step">Step 3</p>
-              <h3>ถ่ายภาพยืนยันตัวตน</h3>
-              <p id="photoStatusText" class="photo-note">เปิดกล้องและถ่ายภาพจากกล้องมือถือเท่านั้น</p>
+          <div class="identity-card">
+            <p class="identity-label">ยืนยันตัวตน</p>
+            <p id="identityStatusText" class="identity-status">ยังไม่ได้ถ่ายภาพยืนยันตัวตน</p>
+          </div>
+
+          <!-- ADDED: ปุ่มนี้พาไปหน้ากล้องแยกสำหรับยืนยันตัวตน -->
+          <button id="openCameraStepBtn" class="primary-gradient-btn save-btn" type="button">
+            ยืนยันตัวตน
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ADDED: หน้ากล้องแยกหลังจากกด "ยืนยันตัวตน" -->
+    <section id="cameraPage" class="page">
+      <div class="camera-page">
+        <div class="title-bar">ยืนยันตัวตน</div>
+
+        <div class="camera-content">
+          <p id="photoStatusText" class="camera-text">จัดใบหน้าให้อยู่ในกรอบ แล้วกดถ่ายภาพ</p>
+
+          <div class="camera-preview-wrap">
+            <video id="photoVideo" class="photo-video" autoplay playsinline muted></video>
+            <img id="capturedImage" class="captured-image hidden" alt="Captured preview" />
+            <div id="photoPlaceholder" class="photo-placeholder">
+              ยังไม่ได้ถ่ายภาพ
+            </div>
+          </div>
+
+          <canvas id="photoCanvas" class="hidden"></canvas>
+
+          <div class="camera-actions">
+            <button id="capturePhotoBtn" class="primary-gradient-btn" type="button" disabled>ถ่ายภาพ</button>
+            <button id="retakePhotoBtn" class="secondary-btn" type="button" disabled>ถ่ายอีกครั้ง</button>
+            <!-- ADDED: ใช้รูปนี้แล้วกลับไปหน้าสรุปก่อนบันทึก -->
+            <button id="usePhotoBtn" class="primary-gradient-btn" type="button" disabled>ใช้รูปนี้</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ADDED: หน้าสุดท้ายหลังยืนยันตัวตนเสร็จ พร้อมกดส่งเช็คชื่อ -->
+    <section id="reviewPage" class="page">
+      <div class="class-page">
+        <div class="title-bar">เช็คชื่อเข้าห้องเรียน</div>
+
+        <div class="content">
+          <div class="class-card">
+            <div id="reviewSubjectName" class="card-header">
+              CS232 INTRODUCTION TO CLOUD COMPUTING TECHNOLOGY
             </div>
 
-            <div class="photo-preview-wrap">
-              <video id="photoVideo" class="photo-video" autoplay playsinline muted></video>
-              <img id="capturedImage" class="captured-image hidden" alt="Captured preview" />
-              <div id="photoPlaceholder" class="photo-placeholder">
-                ยังไม่ได้ถ่ายภาพ
-              </div>
-            </div>
-
-            <canvas id="photoCanvas" class="hidden"></canvas>
-
-            <div class="photo-actions">
-              <button id="openPhotoCameraBtn" class="secondary-btn" type="button">เปิดกล้อง</button>
-              <button id="capturePhotoBtn" class="secondary-btn" type="button" disabled>ถ่ายภาพ</button>
-              <button id="retakePhotoBtn" class="secondary-btn" type="button" disabled>ถ่ายใหม่</button>
+            <div class="card-body">
+              <p><b>Session :</b> <span id="reviewSessionText">-</span></p>
+              <p><b>Section :</b> <span id="reviewSectionText">650001</span></p>
+              <p><b>ห้องเรียน :</b> <span id="reviewRoomText">us2 - 309</span></p>
+              <p><b>เวลาเรียน :</b> <span id="reviewTimeText">09:30-12:30</span></p>
+              <p><b>พิกัด :</b> <span id="reviewCoordsText">-</span></p>
+              <p class="date"><span id="reviewDateText">DD/MM/YYYY</span></p>
             </div>
           </div>
 
           <button id="saveBtn" class="primary-gradient-btn save-btn" type="button">
             บันทึก
+          </button>
+
+          <button id="reviewRetakeBtn" class="retake-btn" type="button">
+            ถ่ายอีกครั้ง
           </button>
         </div>
       </div>
