@@ -9,43 +9,58 @@
 <body>
   <div class="phone">
 
-    <!-- SCAN PAGE -->
     <section id="scanPage" class="page active">
       <div class="scan-page">
         <button class="close-btn" type="button">×</button>
 
+        <div class="scan-top">
+          <p class="scan-label">Step 1</p>
+          <h1 class="scan-title">สแกน QR ห้องเรียน</h1>
+          <p id="scanStatus" class="scan-status">กดปุ่มด้านล่างเพื่อเปิดกล้องและสแกน QR ของอาจารย์</p>
+        </div>
+
         <div class="scanner-box">
+          <video id="scannerVideo" class="scanner-video" autoplay playsinline muted></video>
+          <div class="scanner-overlay"></div>
           <div class="corner top-left"></div>
           <div class="corner top-right"></div>
           <div class="corner bottom-left"></div>
           <div class="corner bottom-right"></div>
+          <div class="scan-line"></div>
         </div>
 
+        <div id="sessionBadge" class="session-badge hidden">ยังไม่ได้สแกน QR</div>
+
         <button id="scanBtn" class="pill-btn" type="button">
-          Find a code to scan
+          เปิดกล้องสแกน QR
         </button>
       </div>
     </section>
 
-    <!-- LOCATION PAGE -->
     <section id="locationPage" class="page">
       <div class="location-page">
+        <div class="title-strip">
+          <p class="step-chip">Step 2</p>
+          <h2>ตรวจสอบตำแหน่งปัจจุบัน</h2>
+          <p id="locationStatusText" class="title-note">ระบบกำลังดึงตำแหน่งของคุณ</p>
+        </div>
+
         <div class="map-area">
           <img
+            id="mapImage"
             class="map-image"
-            src="https://maps.googleapis.com/maps/api/staticmap?center=14.0725,100.6033&zoom=15&size=800x1200&scale=2&maptype=roadmap"
+            src="https://staticmap.openstreetmap.de/staticmap.php?center=14.0725,100.6033&zoom=15&size=800x1200&markers=14.0725,100.6033,red-pushpin"
             alt="Map"
           />
 
           <div class="map-fade"></div>
 
-          <div class="gps-btn">
+          <button id="refreshLocationBtn" class="gps-btn" type="button" aria-label="รีเฟรชตำแหน่ง">
             <span class="gps-dot"></span>
-          </div>
+          </button>
 
-          <div class="location-tag">
-            3HGW+9VH, Khlong Nueng,<br />
-            Khlong Luang District, Path...
+          <div id="locationTag" class="location-tag">
+            กำลังดึงพิกัด...
           </div>
 
           <div class="pin-wrap">
@@ -60,18 +75,20 @@
             id="locationInput"
             class="location-input"
             type="text"
-            value="พิกัดของคุณ 3HGW+9VH"
+            value="กำลังดึงตำแหน่ง..."
             readonly
           />
 
-          <button id="confirmBtn" class="primary-gradient-btn confirm-btn" type="button">
-            ยืนยัน
-          </button>
+          <div class="sheet-actions">
+            <button id="rescanBtn" class="secondary-btn" type="button">สแกนใหม่</button>
+            <button id="confirmBtn" class="primary-gradient-btn confirm-btn" type="button" disabled>
+              ยืนยันตำแหน่ง
+            </button>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- CLASS INFO PAGE -->
     <section id="classInfoPage" class="page">
       <div class="class-page">
         <div class="title-bar">เช็คชื่อเข้าห้องเรียน</div>
@@ -83,9 +100,11 @@
             </div>
 
             <div class="card-body">
+              <p><b>Session :</b> <span id="sessionText">-</span></p>
               <p><b>Section :</b> <span id="sectionText">650001</span></p>
               <p><b>ห้องเรียน :</b> <span id="roomText">us2 - 309</span></p>
               <p><b>เวลาเรียน :</b> <span id="timeText">09:30-12:30</span></p>
+              <p><b>พิกัด :</b> <span id="coordsText">-</span></p>
               <p class="date"><span id="dateText">DD/MM/YYYY</span></p>
             </div>
           </div>

@@ -1,5 +1,5 @@
 // 1. กำหนดค่าเริ่มต้น (เดี๋ยวเอา URL จริงจากเพื่อนมาใส่)
-const API_BASE_URL = "https://your-api-url.amazonaws.com"; 
+const API_BASE_URL = "https://9y8xshv9ek.execute-api.us-east-1.amazonaws.com"; 
 let currentClassId = ""; // เก็บไว้ใช้ตอนส่ง Start Session
 
 // 2. ฟังก์ชันดึงข้อมูลวิชามาโชว์ (ยิงไปที่ getClassInfo)

@@ -27,7 +27,6 @@ body {
   overflow: hidden;
 }
 
-/* shared */
 .page {
   display: none;
   min-height: 100vh;
@@ -53,115 +52,217 @@ body {
 }
 
 .primary-gradient-btn:disabled {
-  opacity: 0.7;
+  opacity: 0.58;
   cursor: not-allowed;
 }
 
+.secondary-btn {
+  width: 100%;
+  border: 1px solid #c6cedf;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #2f61e8;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .pill-btn {
-  min-width: 145px;
-  height: 36px;
+  width: 100%;
+  max-width: 220px;
+  height: 44px;
   padding: 0 16px;
   border: none;
   border-radius: 999px;
   background: linear-gradient(180deg, #2f61e8 0%, #2a55d7 100%);
   color: #fff;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 0.1s ease;
 }
 
-.pill-btn:active {
-  transform: scale(0.98);
-}
-
-/* =========================
-   SCAN PAGE
-========================= */
-.scan-page {
-  position: relative;
-  min-height: 100vh;
-  background: #efefef;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 16px 32px;
+.hidden {
+  display: none;
 }
 
 .close-btn {
   position: absolute;
   top: 14px;
   right: 14px;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border: 1.5px solid #222;
   border-radius: 50%;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.9);
   font-size: 16px;
   line-height: 1;
   color: #222;
   cursor: pointer;
+  z-index: 3;
+}
+
+.scan-page {
+  min-height: 100vh;
+  background: #efefef;
+  padding: 34px 18px 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.scan-top {
+  width: 100%;
+  text-align: center;
+  margin-top: 28px;
+  margin-bottom: 22px;
+}
+
+.scan-label {
+  color: #6d7483;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.scan-title {
+  font-size: 28px;
+  color: #111;
+  margin-bottom: 10px;
+}
+
+.scan-status {
+  color: #4f5666;
+  font-size: 14px;
+  line-height: 1.55;
+  max-width: 300px;
+  margin: 0 auto;
 }
 
 .scanner-box {
-  width: min(210px, 62vw);
+  width: min(300px, 82vw);
   aspect-ratio: 1 / 1;
   position: relative;
-  margin-bottom: 190px;
+  margin-bottom: 18px;
+  border-radius: 26px;
+  overflow: hidden;
+  background: #141922;
+  box-shadow: 0 22px 44px rgba(20, 25, 34, 0.26);
+}
+
+.scanner-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transform: scaleX(-1);
+}
+
+.scanner-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(8, 10, 15, 0.14) 0%, rgba(8, 10, 15, 0.22) 100%);
 }
 
 .corner {
   position: absolute;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
+  z-index: 2;
 }
 
 .top-left {
-  top: 0;
-  left: 0;
-  border-top: 5px solid #000;
-  border-left: 5px solid #000;
+  top: 18px;
+  left: 18px;
+  border-top: 5px solid #ffffff;
+  border-left: 5px solid #ffffff;
   border-top-left-radius: 16px;
 }
 
 .top-right {
-  top: 0;
-  right: 0;
-  border-top: 5px solid #000;
-  border-right: 5px solid #000;
+  top: 18px;
+  right: 18px;
+  border-top: 5px solid #ffffff;
+  border-right: 5px solid #ffffff;
   border-top-right-radius: 16px;
 }
 
 .bottom-left {
-  bottom: 0;
-  left: 0;
-  border-bottom: 5px solid #000;
-  border-left: 5px solid #000;
+  bottom: 18px;
+  left: 18px;
+  border-bottom: 5px solid #ffffff;
+  border-left: 5px solid #ffffff;
   border-bottom-left-radius: 16px;
 }
 
 .bottom-right {
-  bottom: 0;
-  right: 0;
-  border-bottom: 5px solid #000;
-  border-right: 5px solid #000;
+  bottom: 18px;
+  right: 18px;
+  border-bottom: 5px solid #ffffff;
+  border-right: 5px solid #ffffff;
   border-bottom-right-radius: 16px;
 }
 
-/* =========================
-   LOCATION PAGE
-========================= */
+.scan-line {
+  position: absolute;
+  left: 26px;
+  right: 26px;
+  top: 50%;
+  height: 2px;
+  background: rgba(108, 228, 166, 0.95);
+  box-shadow: 0 0 12px rgba(108, 228, 166, 0.85);
+  z-index: 2;
+}
+
+.session-badge {
+  min-height: 38px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: #e7efff;
+  color: #234bb9;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
 .location-page {
-  position: relative;
   min-height: 100vh;
   background: #efefef;
 }
 
+.title-strip {
+  padding: 26px 20px 16px;
+  text-align: center;
+}
+
+.step-chip {
+  width: fit-content;
+  margin: 0 auto 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #e7efff;
+  color: #2f61e8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.title-strip h2 {
+  font-size: 24px;
+  color: #111;
+  margin-bottom: 8px;
+}
+
+.title-note {
+  color: #5a6170;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 .map-area {
   position: relative;
-  height: 74vh;
-  min-height: 520px;
+  height: 52vh;
+  min-height: 360px;
   overflow: hidden;
   background: #dfe6e9;
 }
@@ -171,21 +272,20 @@ body {
   height: 100%;
   object-fit: cover;
   display: block;
-  filter: saturate(0.85) brightness(1.03);
 }
 
 .map-fade {
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.38);
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .gps-btn {
   position: absolute;
   top: 16px;
   left: 14px;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border: 1px solid #d4d4d4;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.95);
@@ -226,26 +326,27 @@ body {
 
 .location-tag {
   position: absolute;
-  top: 222px;
-  left: 58%;
-  transform: translateX(-18%);
+  top: 28px;
+  left: 50%;
+  transform: translateX(-50%);
   background: #171717;
   color: #fff;
   font-size: 11px;
   font-weight: 700;
   line-height: 1.35;
   padding: 10px 12px;
-  border-radius: 4px;
-  max-width: 190px;
+  border-radius: 8px;
+  max-width: 220px;
   z-index: 3;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+  text-align: center;
 }
 
 .pin-wrap {
   position: absolute;
-  top: 288px;
-  left: 60%;
-  transform: translateX(-50%);
+  top: 48%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   width: 28px;
   height: 42px;
   z-index: 3;
@@ -284,40 +385,42 @@ body {
 }
 
 .bottom-sheet {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
   background: #efefef;
   border-top-left-radius: 28px;
   border-top-right-radius: 28px;
-  padding: 22px 22px 30px;
+  padding: 20px 20px 28px;
   box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.08);
+  margin-top: -12px;
+  position: relative;
+  z-index: 4;
 }
 
 .location-input {
   width: 100%;
-  height: 46px;
+  min-height: 50px;
   border: 1px solid #9b9b9b;
-  border-radius: 10px;
+  border-radius: 12px;
   background: #fff;
-  padding: 0 14px;
-  font-size: 16px;
+  padding: 10px 14px;
+  font-size: 15px;
   color: #333;
   text-align: center;
   outline: none;
   margin-bottom: 14px;
 }
 
-.confirm-btn {
-  height: 70px;
-  font-size: 15px;
-  box-shadow: 0 6px 16px rgba(47, 97, 232, 0.25);
+.sheet-actions {
+  display: grid;
+  grid-template-columns: 108px 1fr;
+  gap: 12px;
 }
 
-/* =========================
-   CLASS INFO PAGE
-========================= */
+.confirm-btn,
+.secondary-btn {
+  height: 54px;
+  font-size: 15px;
+}
+
 .class-page {
   min-height: 100vh;
   background: #cfcfcf;
@@ -341,7 +444,7 @@ body {
   border-radius: 22px;
   overflow: hidden;
   box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2);
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 .card-header {
@@ -356,12 +459,12 @@ body {
 .card-body {
   padding: 22px;
   color: #555;
-  line-height: 2;
+  line-height: 1.9;
   font-size: 15px;
 }
 
 .card-body p {
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .date {
@@ -374,44 +477,34 @@ body {
   font-size: 18px;
 }
 
-/* responsive */
 @media (max-width: 390px) {
-  .scanner-box {
-    width: min(190px, 64vw);
-    margin-bottom: 170px;
+  .scan-page {
+    padding: 28px 14px 22px;
   }
 
-  .corner {
-    width: 30px;
-    height: 30px;
+  .scan-title {
+    font-size: 24px;
+  }
+
+  .scanner-box {
+    width: min(280px, 84vw);
   }
 
   .map-area {
-    min-height: 500px;
+    min-height: 320px;
   }
 
   .location-tag {
-    top: 210px;
-    max-width: 178px;
+    max-width: 200px;
     font-size: 10px;
   }
 
-  .pin-wrap {
-    top: 278px;
-  }
-
   .bottom-sheet {
-    padding: 18px 16px 24px;
+    padding: 18px 16px 22px;
   }
 
-  .location-input {
-    height: 44px;
-    font-size: 15px;
-  }
-
-  .confirm-btn {
-    height: 64px;
-    font-size: 14px;
+  .sheet-actions {
+    grid-template-columns: 1fr;
   }
 
   .title-bar {
@@ -425,7 +518,6 @@ body {
 
   .class-card {
     border-radius: 18px;
-    margin-bottom: 24px;
   }
 
   .card-header {
