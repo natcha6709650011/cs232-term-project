@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher GPS System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .hidden { display: none; } /* คลาสสำหรับซ่อนหน้าจอ */
+        body { font-family: 'Kanit', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+    <div id="view-step-2" class="p-4">
+        <h2 class="text-center font-bold mb-4">Locations</h2>
+        <div class="bg-white rounded-3xl overflow-hidden shadow-lg border">
+            <div class="h-64 bg-blue-50 flex items-center justify-center border-b relative">
+                <div class="text-blue-500 text-center p-4">
+                    <p class="text-4xl">📍</p>
+                    <p id="geo-text">กำลังระบุตำแหน่งของคุณ...</p>
+                </div>
+            </div>
+            <div class="p-6">
+                <div class="bg-gray-100 p-3 rounded-xl text-center mb-6">
+                    <p class="text-xs text-gray-500">พิกัดของคุณ</p>
+                    <p id="display-coords" class="font-bold text-blue-600">-- กรุณาอนุญาต GPS --</p>
+                </div>
+                <button onclick="submitStep2()" id="btn-confirm-gps" disabled 
+                    class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold opacity-50 cursor-not-allowed">
+                    ยืนยัน
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-step-3-error" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-6 z-50">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-xs text-center">
+            <h3 class="font-bold mb-2">Share My Location Unavailable</h3>
+            <p class="text-sm text-gray-600 mb-6">Unable to connect to server. Please try again later.</p>
+            <button onclick="closeError()" class="w-full text-blue-600 font-bold border-t pt-3">OK</button>
+        </div>
+    </div>
+
+    <div id="view-step-4" class="hidden p-4">
+        <div class="bg-white rounded-3xl shadow-xl p-6 text-center">
+            <div class="flex justify-center mb-2">
+                <div class="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center text-3xl font-bold">✓</div>
+            </div>
+            <h2 class="font-bold text-xl mb-6">เริ่มคาบเรียนสำเร็จ!</h2>
+            
+            <div class="bg-blue-600 p-4 rounded-3xl inline-block mb-6 shadow-inner">
+                <img id="final-qr" src="" class="w-48 h-48 bg-white rounded-xl" alt="QR Code">
+            </div>
+
+            <div class="flex justify-center gap-2 mb-4">
+                <div class="border rounded-lg px-4 py-2 text-sm font-bold" id="res-course-id">-</div>
+                <div class="border rounded-lg px-4 py-2 text-sm font-bold" id="res-section">-</div>
+            </div>
+            <div class="border rounded-lg py-2 text-sm font-bold mb-6 mx-12" id="res-time">-</div>
+
+            <div class="flex gap-4 px-4">
+                <button class="flex-1 bg-blue-800 text-white py-3 rounded-xl font-bold">บันทึก</button>
+                <button onclick="finishProcess()" class="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-bold">เสร็จสิ้น</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="teacher-GPS.js"></script>
+</body>
+</html>
