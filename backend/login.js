@@ -1,5 +1,6 @@
 require("dotenv").config();
 const axios = require("axios");
+const line = require('@line/bot-sdk');
 const { response, getBody, dynamodb } = require("./common");
 
 // ชื่อตาราง Users
@@ -8,6 +9,7 @@ const USERS_TABLE = process.env.USERS_TABLE || "Users";
 // ชื่อ GSI ที่ใช้ค้นหาด้วย username
 // ต้องให้คนทำ DB สร้าง GSI นี้ใน DynamoDB ด้วย
 const USERNAME_INDEX = process.env.USERNAME_INDEX || "username-index";
+const client = new line.Client({ channelAccessToken: process.env.LINE_ACCESS_TOKEN });
 
 exports.handler = async (event) => {
   try {
@@ -153,6 +155,11 @@ exports.handler = async (event) => {
         Item: userItem
       })
       .promise();
+
+    try {
+      const menuId = (role === 'teacher') ? process.env.TEACHER_MENU_ID : process.env.STUDENT_MENU_ID;
+      await client.linkRichMenuToUser(line_user_id, menuId);
+    } catch (err) { console.error("Link Rich Menu Error:", err); }
 
     // ส่งผลกลับ frontend
     return response(200, {

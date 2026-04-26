@@ -7,6 +7,8 @@ const { response, getBody, dynamodb } = require("./common");
 // import uuidv4 สำหรับสร้าง session_id แบบไม่ซ้ำ
 const { v4: uuidv4 } = require("uuid");
 
+const axios = require("axios");
+
 // กำหนดชื่อตาราง Users จาก environment variable
 // ถ้าไม่มี env จะใช้ชื่อ "Users"
 const USERS_TABLE = process.env.USERS_TABLE || "Users";
@@ -14,6 +16,8 @@ const USERS_TABLE = process.env.USERS_TABLE || "Users";
 // กำหนดชื่อตาราง Sessions จาก environment variable
 // ถ้าไม่มี env จะใช้ชื่อ "Sessions"
 const SESSIONS_TABLE = process.env.SESSIONS_TABLE || "Sessions";
+
+const ROSTER_TABLE = process.env.ROSTER_TABLE || "ClassRoster";
 
 // Lambda handler หลักของไฟล์ startSession
 exports.handler = async (event) => {
@@ -178,6 +182,29 @@ exports.handler = async (event) => {
       type === "cancel"
         ? null
         : `https://liff.line.me/2009731150-FBugBxC4?session_id=${session_id}`; //url นี้ตั้งค่าใน LIFF ของ LINE Developer Console
+
+    let studentList = [];
+    if (type !== "cancel") {
+        try {
+            const rosterResult = await dynamodb.query({
+                TableName: ROSTER_TABLE,
+                IndexName: "class_id-index", // ตรวจสอบชื่อ Index ใน AWS ให้ตรงกัน
+                KeyConditionExpression: "class_id = :cid",
+                ExpressionAttributeValues: { ":cid": sessionItem.class_id }
+            }).promise();
+            studentList = rosterResult.Items.map(item => item.line_user_id);
+        } catch (err) { console.error("Error fetching roster:", err); }
+    }
+
+    if (studentList.length > 0) {
+        try {
+            await axios.post(process.env.WEBHOOK_URL, {
+                action: "notify_students",
+                students: studentList, // ใช้รายชื่อที่ Query ได้จริง
+                sessionDetails: { course_name: sessionItem.course_name, checkin_link }
+            });
+        } catch (err) { console.error("Failed to notify:", err); }
+     }
 
     // ส่ง response กลับไปให้ frontend teacher
     return response(200, {

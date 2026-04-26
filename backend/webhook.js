@@ -1,0 +1,49 @@
+const line = require('@line/bot-sdk');
+const { dynamodb } = require("./common");
+const client = new line.Client({ channelAccessToken: process.env.LINE_ACCESS_TOKEN, channelSecret: process.env.LINE_CHANNEL_SECRET });
+
+exports.handler = async (event) => {
+    const body = JSON.parse(event.body);
+
+    // 1. รับคำสั่งแจ้งเตือนนักศึกษา
+    if (body.action === 'notify_students') {
+        await client.multicast(body.students, [{
+            type: "text",
+            text: `📢 ${body.sessionDetails.course_name} เริ่มแล้ว! เช็คชื่อที่: ${body.sessionDetails.checkin_link}`
+        }]);
+        return { statusCode: 200, body: "OK" };
+    }
+
+    // 2. รับคำสั่งดูสถานะจาก LINE
+    if (body.events) {
+        await Promise.all(body.events.map(async (e) => {
+            if (e.type === 'message' && e.message.text === 'สถานะของฉัน') {
+                const data = await dynamodb.query({
+                    TableName: "Attendance",
+                    IndexName: "line_user_id-index",
+                    KeyConditionExpression: "line_user_id = :uid",
+                    ExpressionAttributeValues: { ":uid": e.source.userId },
+                    Limit: 5
+                }).promise();
+
+                const flex = {
+                    type: "flex",
+                    altText: "สถานะการเข้าเรียน",
+                    contents: {
+                        type: "bubble",
+                        body: { type: "box", layout: "vertical", contents: [
+                            { type: "text", text: "ประวัติการเข้าเรียน", weight: "bold", size: "lg" },
+                            { type: "separator" },
+                            ...data.Items.map(i => ({ type: "box", layout: "horizontal", margin: "md", contents: [
+                                { type: "text", text: i.course_name, size: "sm" },
+                                { type: "text", text: i.status.toUpperCase(), align: "end", color: i.status === "present" ? "#3EB489" : "#FF6B6B" }
+                            ]}))
+                        ]}
+                    }
+                };
+                await client.replyMessage(e.replyToken, flex);
+            }
+        }));
+    }
+    return { statusCode: 200, body: "OK" };
+};
