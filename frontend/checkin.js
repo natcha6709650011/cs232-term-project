@@ -53,7 +53,7 @@ const reviewDateText = document.getElementById("reviewDateText");
 
 const API_BASE_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com";
 const UPLOAD_API_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com/generate-upload-url";
-const LIFF_ID = "2009731150-FBugBxC4";
+const LIFF_ID = "2009731150-xGXS0XX2";
 
 let currentLatitude = null;
 let currentLongitude = null;
@@ -554,6 +554,12 @@ throw new Error(result.message || "เกิดข้อผิดพลาดจ
 }
 
 alert(result.message || "เช็คชื่อสำเร็จ");
+
+// สำคัญ: ปิดหน้าต่าง LIFF ทันทีหลังเช็คชื่อสำเร็จ
+if (typeof liff !== "undefined") {
+    liff.closeWindow();
+}
+
 } catch (error) {
 console.error("submitCheckin error:", error);
 alert("Check-in error: " + (error.message || "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้"));

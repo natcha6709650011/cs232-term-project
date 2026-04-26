@@ -106,7 +106,11 @@ function goToNextPage() {
   }
 
   if (pendingRole === "student") {
-    window.location.href = "checkin.html";
+    if (typeof liff !== "undefined" && liff.isInClient()) {
+      liff.closeWindow(); 
+    } else {
+      window.location.href = "checkin.html";
+    }
     return;
   }
 
