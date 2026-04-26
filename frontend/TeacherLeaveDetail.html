@@ -35,14 +35,20 @@
                <!-- รูปภาพ ใส่ id ให้ครบ (JS มีฟังก์ชัน fetchViewUrl แล้ว) -->
                     <!-- TeacherLeaveDetail.html ปุ่มดูรูป -->
 <img id="evidence-img" 
-     onclick="openPhoto(currentPhotoPath)" 
-     class="w-full cursor-pointer" 
+     onclick="openPhoto(currentPhotoPath)"
+     class="w-full cursor-pointer rounded-xl"
      src="">
             </div>
             <div class="flex gap-4">
-                <button onclick="submitApproval('rejected')" class="flex-1 bg-red-100 text-red-600 py-3 rounded-xl font-bold border border-red-200">ไม่อนุมัติ</button>
-                <button onclick="submitApproval('approved')" class="flex-1 bg-green-500 text-white py-3 rounded-xl font-bold shadow-md">อนุมัติการลา</button>
-            </div>
+    <button onclick="submitApproval('rejected')" 
+            class="flex-1 bg-red-100 text-red-600 py-3 rounded-xl font-bold border border-red-200">
+        ไม่อนุมัติ
+    </button>
+    <button onclick="submitApproval('approved')" 
+            class="flex-1 bg-green-500 text-white py-3 rounded-xl font-bold shadow-md">
+        อนุมัติการลา
+    </button>
+</div>
         </div>
     </div>
 </body>

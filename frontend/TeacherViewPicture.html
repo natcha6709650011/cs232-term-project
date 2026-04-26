@@ -23,10 +23,10 @@
         async function loadImage() {
         // เดิม hardcode → แก้เป็นรับจาก URL
         const params = new URLSearchParams(window.location.search);
-        const filePath = params.get('file_path'); // ← รับค่าจากหน้า LeaveDetail
+        const filePath = params.get('file_path'); // รับ path จากหน้า LeaveDetail
 
         if (!filePath) {
-            alert("ไม่พบไฟล์แนบ");
+            document.getElementById('cert-image').alt = "ไม่พบไฟล์แนบ";
             return;
         }
 
