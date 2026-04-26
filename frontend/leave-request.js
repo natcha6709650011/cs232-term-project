@@ -24,6 +24,8 @@ const viewerContent = document.getElementById("viewerContent");
 const reasonButtons = Array.from(document.querySelectorAll(".reason-option"));
 // ADDED: LIFF ID ตัวจริงจาก LINE Developers
 const LIFF_ID = "2009731150-FBugBxC4";
+const API_BASE_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com";
+const UPLOAD_API_URL = "https://mxys2eeapf.execute-api.us-east-1.amazonaws.com/default/generate-upload-url";
 
 let selectedReason = "ลากิจ";
 let selectedFile = null;
@@ -205,23 +207,101 @@ uploadDropzone.addEventListener("drop", (event) => {
   const [file] = event.dataTransfer.files;
   handleFileSelection(file || null);
 });
-
-leaveForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-
-  resultDate.textContent = formatDate(leaveDateInput.value);
-  resultReason.textContent = selectedReason;
-
-  console.log("Leave request payload (mock):", {
-    // ADDED: line_user_id ตัวจริงจะถูกหยิบจาก LIFF/localStorage
-    line_user_id: activeLineUserId || localStorage.getItem("line_user_id") || null,
-    leave_date: leaveDateInput.value,
-    reason: selectedReason,
-    note: leaveNoteInput.value.trim(),
-    attachment_name: selectedFile ? selectedFile.name : null
+async function requestLeaveUploadTarget(file) {
+  const response = await fetch(UPLOAD_API_URL, {
+    method: "GET"
   });
 
-  openDialog(successDialog);
+  const result = await response.json();
+  const data = result.data || result;
+
+  if (!response.ok) {
+    throw new Error(result.message || "ไม่สามารถขอลิงก์อัปโหลดไฟล์แนบได้");
+  }
+
+  if (!data.upload_url || !data.file_path) {
+    throw new Error("upload api ไม่ได้ส่ง upload_url หรือ file_path กลับมา");
+  }
+
+  return data;
+}
+
+async function uploadLeaveAttachment(file) {
+  if (!file) {
+    return null;
+  }
+
+  const { upload_url, file_path } = await requestLeaveUploadTarget(file);
+
+  const uploadResponse = await fetch(upload_url, {
+    method: "PUT",
+    headers: {
+      "Content-Type": file.type || "application/octet-stream"
+    },
+    body: file
+  });
+
+  if (!uploadResponse.ok) {
+    throw new Error("อัปโหลดไฟล์แนบไม่สำเร็จ");
+  }
+
+  return file_path;
+}
+
+leaveForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  try {
+    await initializeLeaveLiff();
+
+    const lineUserId = activeLineUserId || localStorage.getItem("line_user_id");
+
+    if (!lineUserId) {
+      throw new Error("ไม่พบ LINE user id กรุณาเข้าสู่ระบบใหม่");
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id") || localStorage.getItem("session_id");
+
+    if (!sessionId) {
+      throw new Error("ไม่พบ session_id สำหรับการลา");
+    }
+
+    resultDate.textContent = formatDate(leaveDateInput.value);
+    resultReason.textContent = selectedReason;
+
+    const attachmentPath = await uploadLeaveAttachment(selectedFile);
+
+    const payload = {
+      line_user_id: lineUserId,
+      session_id: sessionId,
+      leave_date: leaveDateInput.value,
+      type: selectedReason,
+      reason: leaveNoteInput.value.trim() || selectedReason,
+      note: leaveNoteInput.value.trim(),
+      attachment_url: attachmentPath,
+      attachment_name: selectedFile ? selectedFile.name : null
+    };
+
+    const response = await fetch(`${API_BASE_URL}/leave`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || "ส่งคำขอลาไม่สำเร็จ");
+    }
+
+    openDialog(successDialog);
+  } catch (error) {
+    console.error("leave request error:", error);
+    alert(error.message || "ส่งคำขอลาไม่สำเร็จ");
+  }
 });
 
 clearBtn.addEventListener("click", resetForm);

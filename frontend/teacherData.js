@@ -1,38 +1,39 @@
 // 1. กำหนดค่าเริ่มต้น
-const API_BASE_URL = "https://9y8xshv9ek.execute-api.us-east-1.amazonaws.com";
+const API_BASE_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com";
 // ADDED: LIFF ID ตัวจริงจาก LINE Developers
 const LIFF_ID = "2009731150-FBugBxC4";
 let currentClassId = ""; // เก็บไว้ใช้ตอนส่ง Start Session
-let activeLineUserId = localStorage.getItem("line_user_id") || "";
+let activeLineUserId = "";
 
 // ADDED: ดึง line_user_id จริงของอาจารย์จาก LIFF แล้วเก็บไว้ใช้ทั้งหน้า
 async function initializeTeacherLiff() {
-    if (activeLineUserId) {
-        return activeLineUserId;
+    if (typeof liff !== "undefined") {
+        try {
+            await liff.init({ liffId: LIFF_ID });
+
+            if (!liff.isLoggedIn()) {
+                liff.login();
+                return "";
+            }
+
+            const profile = await liff.getProfile();
+
+            if (profile?.userId) {
+                activeLineUserId = profile.userId;
+                localStorage.setItem("line_user_id", profile.userId);
+                localStorage.setItem("line_profile", JSON.stringify(profile));
+                return profile.userId;
+            }
+        } catch (error) {
+            console.warn("teacher LIFF init failed:", error);
+        }
     }
 
-    if (typeof liff === "undefined") {
-        return "";
-    }
+    const savedLineUserId = localStorage.getItem("line_user_id");
 
-    try {
-        await liff.init({ liffId: LIFF_ID });
-
-        if (!liff.isLoggedIn()) {
-            liff.login();
-            return "";
-        }
-
-        const profile = await liff.getProfile();
-
-        if (profile?.userId) {
-            activeLineUserId = profile.userId;
-            localStorage.setItem("line_user_id", profile.userId);
-            localStorage.setItem("line_profile", JSON.stringify(profile));
-            return profile.userId;
-        }
-    } catch (error) {
-        console.warn("teacher LIFF init failed:", error);
+    if (savedLineUserId) {
+        activeLineUserId = savedLineUserId;
+        return savedLineUserId;
     }
 
     return "";

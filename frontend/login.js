@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://9y8xshv9ek.execute-api.us-east-1.amazonaws.com";
+const API_BASE_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com";
 // ADDED: LIFF ID ตัวจริงจาก LINE Developers
 const LIFF_ID = "2009731150-FBugBxC4";
 
@@ -195,13 +195,16 @@ async function submitLogin(event) {
       throw new Error(errorMessage);
     }
 
-    if (!result.data || !result.data.role || !result.data.profile) {
+    if (!result.data || !result.data.role) {
       throw new Error("รูปแบบข้อมูลจาก backend ไม่ถูกต้อง");
     }
 
-    pendingRole = result.data.role;
+    const role = result.data.role;
+    const profile = result.data.profile || result.data; // เผื่อ backend ส่งมาแค่ profile โดยมี role อยู่ใน profile
 
-    saveLoginResult(result.data.profile, result.data.role);
+    pendingRole = role;
+
+    saveLoginResult(profile, role);
 
     openOverlay(successOverlay);
   } catch (error) {

@@ -46,7 +46,7 @@ const reviewTimeText = document.getElementById("reviewTimeText");
 const reviewCoordsText = document.getElementById("reviewCoordsText");
 const reviewDateText = document.getElementById("reviewDateText");
 
-const API_BASE_URL = "https://9y8xshv9ek.execute-api.us-east-1.amazonaws.com";
+const API_BASE_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com";
 const UPLOAD_API_URL = "https://mxys2eeapf.execute-api.us-east-1.amazonaws.com/default/generate-upload-url";
 // ADDED: LIFF ID ตัวจริงจาก LINE Developers
 const LIFF_ID = "2009731150-FBugBxC4";
@@ -85,11 +85,6 @@ const classData = {
 
 // ADDED: ดึง line_user_id จริงจาก LIFF ถ้าหน้านี้ถูกเปิดตรงจาก LINE
 async function getActiveLineUserId() {
-  const savedLineUserId = localStorage.getItem("line_user_id");
-  if (savedLineUserId) {
-    return savedLineUserId;
-  }
-
   if (typeof liff !== "undefined") {
     try {
       await liff.init({ liffId: LIFF_ID });
@@ -109,6 +104,12 @@ async function getActiveLineUserId() {
     } catch (error) {
       console.warn("checkin LIFF init failed:", error);
     }
+  }
+
+  const savedLineUserId = localStorage.getItem("line_user_id");
+
+  if (savedLineUserId) {
+    return savedLineUserId;
   }
 
   return studentData.lineUserId;
@@ -583,5 +584,20 @@ resetCapturedPhoto();
 getActiveLineUserId().then((lineUserId) => {
   if (lineUserId) {
     studentData.lineUserId = lineUserId;
+  }
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  const params = new URLSearchParams(window.location.search);
+  const urlSessionId = params.get("session_id");
+
+  if (urlSessionId) {
+    currentSessionId = urlSessionId;
+
+    updateSessionBadge(`Session ID: ${currentSessionId}`);
+
+    showPage(locationPage);
+
+    loadCurrentLocation();
   }
 });
