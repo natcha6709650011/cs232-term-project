@@ -22,10 +22,39 @@ const viewerFileName = document.getElementById("viewerFileName");
 const viewerContent = document.getElementById("viewerContent");
 
 const reasonButtons = Array.from(document.querySelectorAll(".reason-option"));
+// ADDED: LIFF ID ตัวจริงจาก LINE Developers
+const LIFF_ID = "2009731150-FBugBxC4";
 
 let selectedReason = "ลากิจ";
 let selectedFile = null;
 let currentObjectUrl = null;
+let activeLineUserId = localStorage.getItem("line_user_id") || "";
+
+// ADDED: ดึง line_user_id จริงไว้ใช้กับหน้า leave เมื่อ backend พร้อมเชื่อม
+async function initializeLeaveLiff() {
+  if (activeLineUserId) return;
+
+  if (typeof liff === "undefined") {
+    return;
+  }
+
+  try {
+    await liff.init({ liffId: LIFF_ID });
+
+    if (!liff.isLoggedIn()) {
+      return;
+    }
+
+    const profile = await liff.getProfile();
+    if (profile?.userId) {
+      activeLineUserId = profile.userId;
+      localStorage.setItem("line_user_id", profile.userId);
+      localStorage.setItem("line_profile", JSON.stringify(profile));
+    }
+  } catch (error) {
+    console.warn("leave LIFF init failed:", error);
+  }
+}
 
 function formatDate(dateValue) {
   if (!dateValue) return "-";
@@ -184,6 +213,8 @@ leaveForm.addEventListener("submit", (event) => {
   resultReason.textContent = selectedReason;
 
   console.log("Leave request payload (mock):", {
+    // ADDED: line_user_id ตัวจริงจะถูกหยิบจาก LIFF/localStorage
+    line_user_id: activeLineUserId || localStorage.getItem("line_user_id") || null,
     leave_date: leaveDateInput.value,
     reason: selectedReason,
     note: leaveNoteInput.value.trim(),
@@ -220,3 +251,4 @@ window.addEventListener("beforeunload", revokePreviewUrl);
 setDefaultDate();
 setReason(selectedReason);
 updateFilePreview(null);
+initializeLeaveLiff();

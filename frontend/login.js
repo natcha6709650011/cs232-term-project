@@ -1,4 +1,5 @@
-const API_BASE_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com";
+const API_BASE_URL = "https://9y8xshv9ek.execute-api.us-east-1.amazonaws.com";
+// ADDED: LIFF ID ตัวจริงจาก LINE Developers
 const LIFF_ID = "2009731150-FBugBxC4";
 
 // ถ้า test นอก LINE/LIFF จะใช้ mock คงที่
@@ -26,7 +27,7 @@ let pendingRole = null;
  * 4. ถ้าไม่มีอะไรเลย → ใช้ mock คงที่สำหรับ test
  */
 async function getLineUserId() {
-  // ถ้าเปิดผ่าน LIFF และมี liff sdk
+  // ADDED: ถ้าเปิดผ่าน LIFF และมี SDK ให้ใช้ LINE userId จริงก่อน
   if (typeof liff !== "undefined") {
     try {
       await liff.init({ liffId: LIFF_ID });
@@ -85,6 +86,17 @@ function saveLoginResult(profile, role) {
   localStorage.setItem("line_user_id", profile.line_user_id);
   localStorage.setItem("user_role", role);
   localStorage.setItem("user_profile", JSON.stringify(profile));
+
+  // ADDED: เก็บ profile LINE เบื้องต้นไว้ เผื่อหน้าอื่นต้องใช้ต่อ
+  if (typeof liff !== "undefined" && liff.isLoggedIn()) {
+    liff.getProfile()
+      .then((lineProfile) => {
+        localStorage.setItem("line_profile", JSON.stringify(lineProfile));
+      })
+      .catch((error) => {
+        console.warn("save line profile failed:", error);
+      });
+  }
 }
 
 function goToNextPage() {

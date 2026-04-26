@@ -48,6 +48,8 @@ const reviewDateText = document.getElementById("reviewDateText");
 
 const API_BASE_URL = "https://9y8xshv9ek.execute-api.us-east-1.amazonaws.com";
 const UPLOAD_API_URL = "https://mxys2eeapf.execute-api.us-east-1.amazonaws.com/default/generate-upload-url";
+// ADDED: LIFF ID ตัวจริงจาก LINE Developers
+const LIFF_ID = "2009731150-FBugBxC4";
 
 let currentLatitude = null;
 let currentLongitude = null;
@@ -80,6 +82,37 @@ const classData = {
   time: "09:30-12:30",
   date: "DD/MM/YYYY"
 };
+
+// ADDED: ดึง line_user_id จริงจาก LIFF ถ้าหน้านี้ถูกเปิดตรงจาก LINE
+async function getActiveLineUserId() {
+  const savedLineUserId = localStorage.getItem("line_user_id");
+  if (savedLineUserId) {
+    return savedLineUserId;
+  }
+
+  if (typeof liff !== "undefined") {
+    try {
+      await liff.init({ liffId: LIFF_ID });
+
+      if (!liff.isLoggedIn()) {
+        liff.login();
+        return null;
+      }
+
+      const profile = await liff.getProfile();
+
+      if (profile?.userId) {
+        localStorage.setItem("line_user_id", profile.userId);
+        localStorage.setItem("line_profile", JSON.stringify(profile));
+        return profile.userId;
+      }
+    } catch (error) {
+      console.warn("checkin LIFF init failed:", error);
+    }
+  }
+
+  return studentData.lineUserId;
+}
 
 function showPage(targetPage) {
   [scanPage, locationPage, classInfoPage, cameraPage, reviewPage].forEach((page) => {
@@ -429,6 +462,14 @@ function buildCheckinPayload(imageUrl) {
 
 async function submitCheckin() {
   try {
+    // ADDED: อัปเดต line_user_id จริงก่อนยิง backend
+    const activeLineUserId = await getActiveLineUserId();
+    if (!activeLineUserId) {
+      return;
+    }
+
+    studentData.lineUserId = activeLineUserId;
+
     saveBtn.disabled = true;
     saveBtn.textContent = "กำลังอัปโหลดรูป...";
 
@@ -537,3 +578,10 @@ window.addEventListener("beforeunload", () => {
 updateSessionBadge("ยังไม่ได้สแกน QR", false);
 renderClassInfo();
 resetCapturedPhoto();
+
+// ADDED: เตรียม line_user_id จริงไว้ตั้งแต่เปิดหน้า check-in
+getActiveLineUserId().then((lineUserId) => {
+  if (lineUserId) {
+    studentData.lineUserId = lineUserId;
+  }
+});
