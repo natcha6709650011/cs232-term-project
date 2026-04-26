@@ -1,11 +1,14 @@
 const scanPage = document.getElementById("scanPage");
 const locationPage = document.getElementById("locationPage");
 const classInfoPage = document.getElementById("classInfoPage");
-// ADDED: หน้าใหม่สำหรับกล้อง และหน้าสรุปก่อนบันทึก
 const cameraPage = document.getElementById("cameraPage");
 const reviewPage = document.getElementById("reviewPage");
 
 const scanBtn = document.getElementById("scanBtn");
+const qrReader = document.getElementById("qrReader");
+const scanImageBtn = document.getElementById("scanImageBtn");
+const qrImageInput = document.getElementById("qrImageInput");
+
 const confirmBtn = document.getElementById("confirmBtn");
 const saveBtn = document.getElementById("saveBtn");
 const rescanBtn = document.getElementById("rescanBtn");
@@ -29,6 +32,7 @@ const timeText = document.getElementById("timeText");
 const dateText = document.getElementById("dateText");
 const sessionText = document.getElementById("sessionText");
 const coordsText = document.getElementById("coordsText");
+
 const capturePhotoBtn = document.getElementById("capturePhotoBtn");
 const retakePhotoBtn = document.getElementById("retakePhotoBtn");
 const usePhotoBtn = document.getElementById("usePhotoBtn");
@@ -38,6 +42,7 @@ const photoPlaceholder = document.getElementById("photoPlaceholder");
 const photoCanvas = document.getElementById("photoCanvas");
 const photoStatusText = document.getElementById("photoStatusText");
 const identityStatusText = document.getElementById("identityStatusText");
+
 const reviewSubjectName = document.getElementById("reviewSubjectName");
 const reviewSessionText = document.getElementById("reviewSessionText");
 const reviewSectionText = document.getElementById("reviewSectionText");
@@ -48,15 +53,16 @@ const reviewDateText = document.getElementById("reviewDateText");
 
 const API_BASE_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com";
 const UPLOAD_API_URL = "https://mxys2eeapf.execute-api.us-east-1.amazonaws.com/default/generate-upload-url";
-// ADDED: LIFF ID ตัวจริงจาก LINE Developers
 const LIFF_ID = "2009731150-FBugBxC4";
 
 let currentLatitude = null;
 let currentLongitude = null;
 let currentSessionId = "";
+
 let scannerStream = null;
 let scanIntervalId = null;
-let barcodeDetector = null;
+let html5QrCode = null;
+
 let photoStream = null;
 let currentPhotoBlob = null;
 let currentPhotoPreviewUrl = "";
@@ -83,7 +89,6 @@ const classData = {
   date: "DD/MM/YYYY"
 };
 
-// ADDED: ดึง line_user_id จริงจาก LIFF ถ้าหน้านี้ถูกเปิดตรงจาก LINE
 async function getActiveLineUserId() {
   if (typeof liff !== "undefined") {
     try {
@@ -145,7 +150,6 @@ function renderClassInfo() {
       : "-";
 }
 
-// ADDED: ใช้ render ข้อมูลชุดเดิมในหน้าสรุปก่อนบันทึก
 function renderReviewInfo() {
   reviewSubjectName.textContent = classData.subjectName;
   reviewSessionText.textContent = currentSessionId || "-";
@@ -191,7 +195,118 @@ function stopScanner() {
     scannerStream = null;
   }
 
-  scannerVideo.srcObject = null;
+  if (scannerVideo) {
+    scannerVideo.srcObject = null;
+  }
+}
+
+async function stopHtml5QrScanner() {
+  try {
+    if (html5QrCode) {
+      await html5QrCode.stop().catch(() => {});
+      await html5QrCode.clear().catch(() => {});
+      html5QrCode = null;
+    }
+  } catch (error) {
+    console.warn("stop qr scanner failed:", error);
+    html5QrCode = null;
+  }
+}
+
+async function handleDetectedQr(rawValue) {
+  const sessionId = parseSessionIdFromText(rawValue);
+
+  if (!sessionId) {
+    scanStatus.textContent = "ไม่พบ session_id ใน QR Code";
+    return;
+  }
+
+  currentSessionId = sessionId;
+  localStorage.setItem("session_id", currentSessionId);
+
+  await stopHtml5QrScanner();
+  stopScanner();
+
+  scanStatus.textContent = "สแกน QR สำเร็จแล้ว";
+  updateSessionBadge(`Session ID: ${currentSessionId}`);
+
+  showPage(locationPage);
+  loadCurrentLocation();
+}
+
+async function beginQrScanning() {
+  if (typeof Html5Qrcode === "undefined") {
+    scanStatus.textContent = "ไม่สามารถโหลดระบบสแกน QR ได้";
+    return;
+  }
+
+  try {
+    scanStatus.textContent = "กำลังเปิดกล้องสแกน QR...";
+
+    await stopHtml5QrScanner();
+    stopScanner();
+
+    html5QrCode = new Html5Qrcode("qrReader");
+
+    const cameras = await Html5Qrcode.getCameras();
+
+    if (!cameras || cameras.length === 0) {
+      scanStatus.textContent = "ไม่พบกล้องในอุปกรณ์นี้ กรุณาเลือกรูป QR จากแกลอรี่แทน";
+      return;
+    }
+
+    const backCamera =
+      cameras.find((camera) => camera.label.toLowerCase().includes("back")) ||
+      cameras[cameras.length - 1] ||
+      cameras[0];
+
+    await html5QrCode.start(
+      backCamera.id,
+      {
+        fps: 10,
+        qrbox: {
+          width: 250,
+          height: 250
+        }
+      },
+      (decodedText) => {
+        handleDetectedQr(decodedText);
+      },
+      () => {}
+    );
+
+    scanStatus.textContent = "กรุณาสแกน QR Code ห้องเรียน";
+  } catch (error) {
+    console.error("QR camera error:", error);
+    scanStatus.textContent =
+      "ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตการใช้กล้อง หรือเลือกรูป QR จากแกลอรี่แทน";
+  }
+}
+
+async function scanQrFromImage(file) {
+  if (!file) return;
+
+  if (typeof Html5Qrcode === "undefined") {
+    scanStatus.textContent = "ไม่สามารถโหลดระบบอ่าน QR จากรูปได้";
+    return;
+  }
+
+  try {
+    scanStatus.textContent = "กำลังอ่าน QR จากรูปภาพ...";
+
+    await stopHtml5QrScanner();
+    stopScanner();
+
+    const imageQrCode = new Html5Qrcode("qrReader");
+    const decodedText = await imageQrCode.scanFile(file, true);
+
+    await imageQrCode.clear().catch(() => {});
+
+    handleDetectedQr(decodedText);
+  } catch (error) {
+    console.error("scan image qr error:", error);
+    scanStatus.textContent = "อ่าน QR จากรูปไม่สำเร็จ กรุณาเลือกรูป QR ที่ชัดเจน";
+  }
 }
 
 function stopPhotoCamera() {
@@ -220,7 +335,6 @@ function resetCapturedPhoto() {
   identityStatusText.textContent = "ยังไม่ได้ถ่ายภาพยืนยันตัวตน";
 }
 
-// ADDED: เปิดกล้องหน้าเฉพาะตอนเข้า step ยืนยันตัวตน
 async function openPhotoCamera() {
   if (!navigator.mediaDevices?.getUserMedia) {
     photoStatusText.textContent = "อุปกรณ์นี้ไม่รองรับการเปิดกล้อง";
@@ -325,65 +439,6 @@ async function uploadCapturedImage() {
   return file_path;
 }
 
-async function handleDetectedQr(rawValue) {
-  const sessionId = parseSessionIdFromText(rawValue);
-  if (!sessionId) return;
-
-  currentSessionId = sessionId;
-  stopScanner();
-  scanStatus.textContent = "สแกน QR สำเร็จแล้ว";
-  updateSessionBadge(`Session ID: ${currentSessionId}`);
-  showPage(locationPage);
-  loadCurrentLocation();
-}
-
-async function beginQrScanning() {
-  if (!navigator.mediaDevices?.getUserMedia) {
-    scanStatus.textContent = "อุปกรณ์นี้ไม่รองรับการเปิดกล้อง";
-    return;
-  }
-
-  if (!("BarcodeDetector" in window)) {
-    scanStatus.textContent = "เบราว์เซอร์นี้ยังไม่รองรับการสแกน QR";
-    return;
-  }
-
-  try {
-    barcodeDetector = new BarcodeDetector({ formats: ["qr_code"] });
-    scanStatus.textContent = "กำลังเปิดกล้อง...";
-
-    scannerStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: "environment" }
-      },
-      audio: false
-    });
-
-    scannerVideo.srcObject = scannerStream;
-    await scannerVideo.play();
-
-    scanStatus.textContent = "หันกล้องไปที่ QR ของอาจารย์";
-
-    scanIntervalId = window.setInterval(async () => {
-      if (!barcodeDetector || scannerVideo.readyState < 2) return;
-
-      try {
-        const barcodes = await barcodeDetector.detect(scannerVideo);
-        if (!barcodes.length) return;
-
-        const [barcode] = barcodes;
-        await handleDetectedQr(barcode.rawValue);
-      } catch (error) {
-        console.error("QR detect error:", error);
-      }
-    }, 450);
-  } catch (error) {
-    console.error("Camera error:", error);
-    scanStatus.textContent = "ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตสิทธิ์กล้อง";
-    stopScanner();
-  }
-}
-
 function loadCurrentLocation() {
   setConfirmEnabled(false);
 
@@ -463,8 +518,8 @@ function buildCheckinPayload(imageUrl) {
 
 async function submitCheckin() {
   try {
-    // ADDED: อัปเดต line_user_id จริงก่อนยิง backend
     const activeLineUserId = await getActiveLineUserId();
+
     if (!activeLineUserId) {
       return;
     }
@@ -476,13 +531,8 @@ async function submitCheckin() {
 
     const imageUrl = await uploadCapturedImage();
     const payload = buildCheckinPayload(imageUrl);
-    if (!payload) return;
 
-    if (!API_BASE_URL) {
-      alert("หน้าเช็คชื่อพร้อมแล้ว แต่ยังไม่ได้ใส่ API_BASE_URL");
-      console.log("Check-in payload:", payload);
-      return;
-    }
+    if (!payload) return;
 
     saveBtn.textContent = "กำลังบันทึก...";
 
@@ -512,6 +562,22 @@ async function submitCheckin() {
 
 scanBtn.addEventListener("click", beginQrScanning);
 
+if (scanImageBtn && qrImageInput) {
+  scanImageBtn.addEventListener("click", () => {
+    qrImageInput.click();
+  });
+
+  qrImageInput.addEventListener("change", (event) => {
+    const [file] = event.target.files;
+
+    if (file) {
+      scanQrFromImage(file);
+    }
+
+    qrImageInput.value = "";
+  });
+}
+
 refreshLocationBtn.addEventListener("click", loadCurrentLocation);
 
 rescanBtn.addEventListener("click", () => {
@@ -531,7 +597,6 @@ confirmBtn.addEventListener("click", () => {
   showPage(classInfoPage);
 });
 
-// ADDED: จากหน้าข้อมูลคาบ -> ไปหน้ากล้อง
 openCameraStepBtn.addEventListener("click", () => {
   showPage(cameraPage);
   resetCapturedPhoto();
@@ -540,12 +605,12 @@ openCameraStepBtn.addEventListener("click", () => {
 
 saveBtn.addEventListener("click", submitCheckin);
 capturePhotoBtn.addEventListener("click", capturePhoto);
+
 retakePhotoBtn.addEventListener("click", () => {
   resetCapturedPhoto();
   openPhotoCamera();
 });
 
-// ADDED: ถ้าใช้รูปนี้แล้ว ค่อยไปหน้าสุดท้ายก่อนบันทึก
 usePhotoBtn.addEventListener("click", () => {
   if (!currentPhotoBlob) {
     alert("กรุณาถ่ายภาพก่อน");
@@ -556,7 +621,6 @@ usePhotoBtn.addEventListener("click", () => {
   showPage(reviewPage);
 });
 
-// ADDED: จากหน้าสรุปย้อนกลับไปถ่ายรูปใหม่
 reviewRetakeBtn.addEventListener("click", () => {
   showPage(cameraPage);
   resetCapturedPhoto();
@@ -566,12 +630,14 @@ reviewRetakeBtn.addEventListener("click", () => {
 const closeBtn = document.querySelector(".close-btn");
 
 closeBtn.addEventListener("click", () => {
+  stopHtml5QrScanner();
   stopScanner();
   stopPhotoCamera();
   window.history.back();
 });
 
 window.addEventListener("beforeunload", () => {
+  stopHtml5QrScanner();
   stopScanner();
   stopPhotoCamera();
 });
@@ -580,7 +646,6 @@ updateSessionBadge("ยังไม่ได้สแกน QR", false);
 renderClassInfo();
 resetCapturedPhoto();
 
-// ADDED: เตรียม line_user_id จริงไว้ตั้งแต่เปิดหน้า check-in
 getActiveLineUserId().then((lineUserId) => {
   if (lineUserId) {
     studentData.lineUserId = lineUserId;
