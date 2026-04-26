@@ -100,6 +100,12 @@ function saveLoginResult(profile, role) {
 }
 
 function goToNextPage() {
+  if (typeof liff !== "undefined" && liff.isInClient()) {
+    liff.closeWindow();
+    return;
+  }
+
+  // 2. ถ้าไม่ได้เปิดใน LINE (เช่น เทสใน Chrome บนคอมพิวเตอร์) ให้ทำงานตามปกติ
   if (pendingRole === "teacher") {
     window.location.href = "teacher-dashboard.html";
     return;
