@@ -25,8 +25,7 @@ const reasonButtons = Array.from(document.querySelectorAll(".reason-option"));
 // ADDED: LIFF ID ตัวจริงจาก LINE Developers
 const LIFF_ID = "2009731150-FBugBxC4";
 const API_BASE_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com";
-const UPLOAD_API_URL = "https://mxys2eeapf.execute-api.us-east-1.amazonaws.com/default/generate-upload-url";
-
+const UPLOAD_API_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com/generate-upload-url?folder=leave";
 let selectedReason = "ลากิจ";
 let selectedFile = null;
 let currentObjectUrl = null;

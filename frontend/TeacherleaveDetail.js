@@ -1,6 +1,5 @@
 const API_BASE_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com";
-const VIEW_URL_API = "https://w763mkyzm5.execute-api.us-east-1.amazonaws.com/default/generate-view-url";
-
+const VIEW_URL_API = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com/generate-view-url";
 // ฟังก์ชันรับข้อมูลการลามาแสดงผล
 function renderLeaveDetail(data) {
     // data ควรเป็น Object เช่น { name: "...", studentId: "...", reason: "..." }

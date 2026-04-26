@@ -52,7 +52,7 @@ const reviewCoordsText = document.getElementById("reviewCoordsText");
 const reviewDateText = document.getElementById("reviewDateText");
 
 const API_BASE_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com";
-const UPLOAD_API_URL = "https://mxys2eeapf.execute-api.us-east-1.amazonaws.com/default/generate-upload-url";
+const UPLOAD_API_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com/generate-upload-url";
 const LIFF_ID = "2009731150-FBugBxC4";
 
 let currentLatitude = null;
@@ -68,578 +68,583 @@ let currentPhotoBlob = null;
 let currentPhotoPreviewUrl = "";
 
 const storedProfile = (() => {
-  try {
-    return JSON.parse(localStorage.getItem("user_profile") || "{}");
-  } catch (error) {
-    return {};
-  }
+try {
+return JSON.parse(localStorage.getItem("user_profile") || "{}");
+} catch (error) {
+return {};
+}
 })();
 
 const studentData = {
-  studentId: storedProfile.username || "6700000000",
-  lineUserId: localStorage.getItem("line_user_id") || "mock-line-user-id"
+studentId: storedProfile.username || "6700000000",
+lineUserId: localStorage.getItem("line_user_id") || "mock-line-user-id"
 };
 
 const classData = {
-  subjectId: "CS232",
-  subjectName: "CS232 INTRODUCTION TO CLOUD COMPUTING TECHNOLOGY",
-  section: "650001",
-  room: "us2 - 309",
-  time: "09:30-12:30",
-  date: "DD/MM/YYYY"
+subjectId: "CS232",
+subjectName: "CS232 INTRODUCTION TO CLOUD COMPUTING TECHNOLOGY",
+section: "650001",
+room: "us2 - 309",
+time: "09:30-12:30",
+date: "DD/MM/YYYY"
 };
 
 async function getActiveLineUserId() {
-  if (typeof liff !== "undefined") {
-    try {
-      await liff.init({ liffId: LIFF_ID });
+if (typeof liff !== "undefined") {
+try {
+await liff.init({ liffId: LIFF_ID });
 
-      if (!liff.isLoggedIn()) {
-        liff.login();
-        return null;
-      }
+if (!liff.isLoggedIn()) {
+liff.login();
+return null;
+}
 
-      const profile = await liff.getProfile();
+const profile = await liff.getProfile();
 
-      if (profile?.userId) {
-        localStorage.setItem("line_user_id", profile.userId);
-        localStorage.setItem("line_profile", JSON.stringify(profile));
-        return profile.userId;
-      }
-    } catch (error) {
-      console.warn("checkin LIFF init failed:", error);
-    }
-  }
+if (profile?.userId) {
+localStorage.setItem("line_user_id", profile.userId);
+localStorage.setItem("line_profile", JSON.stringify(profile));
+return profile.userId;
+}
+} catch (error) {
+console.warn("checkin LIFF init failed:", error);
+}
+}
 
-  const savedLineUserId = localStorage.getItem("line_user_id");
+const savedLineUserId = localStorage.getItem("line_user_id");
 
-  if (savedLineUserId) {
-    return savedLineUserId;
-  }
+if (savedLineUserId) {
+return savedLineUserId;
+}
 
-  return studentData.lineUserId;
+return studentData.lineUserId;
 }
 
 function showPage(targetPage) {
-  [scanPage, locationPage, classInfoPage, cameraPage, reviewPage].forEach((page) => {
-    page.classList.remove("active");
-  });
+[scanPage, locationPage, classInfoPage, cameraPage, reviewPage].forEach((page) => {
+page.classList.remove("active");
+});
 
-  targetPage.classList.add("active");
+targetPage.classList.add("active");
 }
 
 function setConfirmEnabled(enabled) {
-  confirmBtn.disabled = !enabled;
+confirmBtn.disabled = !enabled;
 }
 
 function updateSessionBadge(text, isVisible = true) {
-  sessionBadge.textContent = text;
-  sessionBadge.classList.toggle("hidden", !isVisible);
+sessionBadge.textContent = text;
+sessionBadge.classList.toggle("hidden", !isVisible);
 }
 
 function renderClassInfo() {
-  subjectName.textContent = classData.subjectName;
-  sectionText.textContent = classData.section;
-  roomText.textContent = classData.room;
-  timeText.textContent = classData.time;
-  dateText.textContent = classData.date;
-  sessionText.textContent = currentSessionId || "-";
-  coordsText.textContent =
-    currentLatitude != null && currentLongitude != null
-      ? `${currentLatitude.toFixed(6)}, ${currentLongitude.toFixed(6)}`
-      : "-";
+subjectName.textContent = classData.subjectName;
+sectionText.textContent = classData.section;
+roomText.textContent = classData.room;
+timeText.textContent = classData.time;
+dateText.textContent = classData.date;
+sessionText.textContent = currentSessionId || "-";
+coordsText.textContent =
+currentLatitude != null && currentLongitude != null
+? `${currentLatitude.toFixed(6)}, ${currentLongitude.toFixed(6)}`
+: "-";
 }
 
 function renderReviewInfo() {
-  reviewSubjectName.textContent = classData.subjectName;
-  reviewSessionText.textContent = currentSessionId || "-";
-  reviewSectionText.textContent = classData.section;
-  reviewRoomText.textContent = classData.room;
-  reviewTimeText.textContent = classData.time;
-  reviewDateText.textContent = classData.date;
-  reviewCoordsText.textContent =
-    currentLatitude != null && currentLongitude != null
-      ? `${currentLatitude.toFixed(6)}, ${currentLongitude.toFixed(6)}`
-      : "-";
+reviewSubjectName.textContent = classData.subjectName;
+reviewSessionText.textContent = currentSessionId || "-";
+reviewSectionText.textContent = classData.section;
+reviewRoomText.textContent = classData.room;
+reviewTimeText.textContent = classData.time;
+reviewDateText.textContent = classData.date;
+reviewCoordsText.textContent =
+currentLatitude != null && currentLongitude != null
+? `${currentLatitude.toFixed(6)}, ${currentLongitude.toFixed(6)}`
+: "-";
 }
 
 function updateMapPreview(latitude, longitude) {
-  mapImage.src =
-    `https://staticmap.openstreetmap.de/staticmap.php?center=${latitude},${longitude}` +
-    `&zoom=16&size=800x1200&markers=${latitude},${longitude},red-pushpin`;
+mapImage.src =
+`https://staticmap.openstreetmap.de/staticmap.php?center=${latitude},${longitude}` +
+`&zoom=16&size=800x1200&markers=${latitude},${longitude},red-pushpin`;
 
-  locationTag.textContent = `ตำแหน่งปัจจุบัน ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+locationTag.textContent = `ตำแหน่งปัจจุบัน ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
 }
 
 function parseSessionIdFromText(rawValue) {
-  if (!rawValue) return "";
+if (!rawValue) return "";
 
-  const trimmed = rawValue.trim();
+const trimmed = rawValue.trim();
 
-  try {
-    const parsedUrl = new URL(trimmed);
-    return parsedUrl.searchParams.get("session_id") || parsedUrl.pathname.split("/").pop() || trimmed;
-  } catch (error) {
-    return trimmed;
-  }
+try {
+const parsedUrl = new URL(trimmed);
+return parsedUrl.searchParams.get("session_id") || parsedUrl.pathname.split("/").pop() || trimmed;
+} catch (error) {
+return trimmed;
+}
 }
 
 function stopScanner() {
-  if (scanIntervalId) {
-    clearInterval(scanIntervalId);
-    scanIntervalId = null;
-  }
+if (scanIntervalId) {
+clearInterval(scanIntervalId);
+scanIntervalId = null;
+}
 
-  if (scannerStream) {
-    scannerStream.getTracks().forEach((track) => track.stop());
-    scannerStream = null;
-  }
+if (scannerStream) {
+scannerStream.getTracks().forEach((track) => track.stop());
+scannerStream = null;
+}
 
-  if (scannerVideo) {
-    scannerVideo.srcObject = null;
-  }
+if (scannerVideo) {
+scannerVideo.srcObject = null;
+}
 }
 
 async function stopHtml5QrScanner() {
-  try {
-    if (html5QrCode) {
-      await html5QrCode.stop().catch(() => {});
-      await html5QrCode.clear().catch(() => {});
-      html5QrCode = null;
-    }
-  } catch (error) {
-    console.warn("stop qr scanner failed:", error);
-    html5QrCode = null;
-  }
+try {
+if (html5QrCode) {
+await html5QrCode.stop().catch(() => {});
+await html5QrCode.clear().catch(() => {});
+html5QrCode = null;
+}
+} catch (error) {
+console.warn("stop qr scanner failed:", error);
+html5QrCode = null;
+}
 }
 
 async function handleDetectedQr(rawValue) {
-  const sessionId = parseSessionIdFromText(rawValue);
+const sessionId = parseSessionIdFromText(rawValue);
 
-  if (!sessionId) {
-    scanStatus.textContent = "ไม่พบ session_id ใน QR Code";
-    return;
-  }
+if (!sessionId) {
+scanStatus.textContent = "ไม่พบ session_id ใน QR Code";
+return;
+}
 
-  currentSessionId = sessionId;
-  localStorage.setItem("session_id", currentSessionId);
+currentSessionId = sessionId;
+localStorage.setItem("session_id", currentSessionId);
 
-  await stopHtml5QrScanner();
-  stopScanner();
+await stopHtml5QrScanner();
+stopScanner();
 
-  scanStatus.textContent = "สแกน QR สำเร็จแล้ว";
-  updateSessionBadge(`Session ID: ${currentSessionId}`);
+scanStatus.textContent = "สแกน QR สำเร็จแล้ว";
+updateSessionBadge(`Session ID: ${currentSessionId}`);
 
-  showPage(locationPage);
-  loadCurrentLocation();
+showPage(locationPage);
+loadCurrentLocation();
 }
 
 async function beginQrScanning() {
-  if (typeof Html5Qrcode === "undefined") {
-    scanStatus.textContent = "ไม่สามารถโหลดระบบสแกน QR ได้";
-    return;
-  }
+if (typeof Html5Qrcode === "undefined") {
+scanStatus.textContent = "ไม่สามารถโหลดระบบสแกน QR ได้";
+return;
+}
 
-  try {
-    scanStatus.textContent = "กำลังเปิดกล้องสแกน QR...";
+try {
+scanStatus.textContent = "กำลังเปิดกล้องสแกน QR...";
 
-    await stopHtml5QrScanner();
-    stopScanner();
+await stopHtml5QrScanner();
+stopScanner();
 
-    html5QrCode = new Html5Qrcode("qrReader");
+html5QrCode = new Html5Qrcode("qrReader");
 
-    const cameras = await Html5Qrcode.getCameras();
+const cameras = await Html5Qrcode.getCameras();
 
-    if (!cameras || cameras.length === 0) {
-      scanStatus.textContent = "ไม่พบกล้องในอุปกรณ์นี้ กรุณาเลือกรูป QR จากแกลอรี่แทน";
-      return;
-    }
+if (!cameras || cameras.length === 0) {
+scanStatus.textContent = "ไม่พบกล้องในอุปกรณ์นี้ กรุณาเลือกรูป QR จากแกลอรี่แทน";
+return;
+}
 
-    const backCamera =
-      cameras.find((camera) => camera.label.toLowerCase().includes("back")) ||
-      cameras[cameras.length - 1] ||
-      cameras[0];
+const backCamera =
+cameras.find((camera) => camera.label.toLowerCase().includes("back")) ||
+cameras[cameras.length - 1] ||
+cameras[0];
 
-    await html5QrCode.start(
-      backCamera.id,
-      {
-        fps: 10,
-        qrbox: {
-          width: 250,
-          height: 250
-        }
-      },
-      (decodedText) => {
-        handleDetectedQr(decodedText);
-      },
-      () => {}
-    );
+await html5QrCode.start(
+backCamera.id,
+{
+fps: 10,
+qrbox: {
+width: 250,
+height: 250
+}
+},
+(decodedText) => {
+handleDetectedQr(decodedText);
+},
+() => {}
+);
 
-    scanStatus.textContent = "กรุณาสแกน QR Code ห้องเรียน";
-  } catch (error) {
-    console.error("QR camera error:", error);
-    scanStatus.textContent =
-      "ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตการใช้กล้อง หรือเลือกรูป QR จากแกลอรี่แทน";
-  }
+scanStatus.textContent = "กรุณาสแกน QR Code ห้องเรียน";
+} catch (error) {
+console.error("QR camera error:", error);
+scanStatus.textContent =
+"ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตการใช้กล้อง หรือเลือกรูป QR จากแกลอรี่แทน";
+}
 }
 
 async function scanQrFromImage(file) {
-  if (!file) return;
+if (!file) return;
 
-  if (typeof Html5Qrcode === "undefined") {
-    scanStatus.textContent = "ไม่สามารถโหลดระบบอ่าน QR จากรูปได้";
-    return;
-  }
+if (typeof Html5Qrcode === "undefined") {
+scanStatus.textContent = "ไม่สามารถโหลดระบบอ่าน QR จากรูปได้";
+return;
+}
 
-  try {
-    scanStatus.textContent = "กำลังอ่าน QR จากรูปภาพ...";
+try {
+scanStatus.textContent = "กำลังอ่าน QR จากรูปภาพ...";
 
-    await stopHtml5QrScanner();
-    stopScanner();
+await stopHtml5QrScanner();
+stopScanner();
 
-    const imageQrCode = new Html5Qrcode("qrReader");
-    const decodedText = await imageQrCode.scanFile(file, true);
+const imageQrCode = new Html5Qrcode("qrReader");
+const decodedText = await imageQrCode.scanFile(file, true);
 
-    await imageQrCode.clear().catch(() => {});
+await imageQrCode.clear().catch(() => {});
 
-    handleDetectedQr(decodedText);
-  } catch (error) {
-    console.error("scan image qr error:", error);
-    scanStatus.textContent = "อ่าน QR จากรูปไม่สำเร็จ กรุณาเลือกรูป QR ที่ชัดเจน";
-  }
+handleDetectedQr(decodedText);
+} catch (error) {
+console.error("scan image qr error:", error);
+scanStatus.textContent = "อ่าน QR จากรูปไม่สำเร็จ กรุณาเลือกรูป QR ที่ชัดเจน";
+}
 }
 
 function stopPhotoCamera() {
-  if (photoStream) {
-    photoStream.getTracks().forEach((track) => track.stop());
-    photoStream = null;
-  }
+if (photoStream) {
+photoStream.getTracks().forEach((track) => track.stop());
+photoStream = null;
+}
 
-  photoVideo.srcObject = null;
-  capturePhotoBtn.disabled = true;
+photoVideo.srcObject = null;
+capturePhotoBtn.disabled = true;
 }
 
 function resetCapturedPhoto() {
-  currentPhotoBlob = null;
+currentPhotoBlob = null;
 
-  if (currentPhotoPreviewUrl) {
-    URL.revokeObjectURL(currentPhotoPreviewUrl);
-    currentPhotoPreviewUrl = "";
-  }
+if (currentPhotoPreviewUrl) {
+URL.revokeObjectURL(currentPhotoPreviewUrl);
+currentPhotoPreviewUrl = "";
+}
 
-  capturedImage.src = "";
-  capturedImage.classList.add("hidden");
-  photoPlaceholder.classList.remove("hidden");
-  retakePhotoBtn.disabled = true;
-  usePhotoBtn.disabled = true;
-  identityStatusText.textContent = "ยังไม่ได้ถ่ายภาพยืนยันตัวตน";
+capturedImage.src = "";
+capturedImage.classList.add("hidden");
+photoPlaceholder.classList.remove("hidden");
+retakePhotoBtn.disabled = true;
+usePhotoBtn.disabled = true;
+identityStatusText.textContent = "ยังไม่ได้ถ่ายภาพยืนยันตัวตน";
 }
 
 async function openPhotoCamera() {
-  if (!navigator.mediaDevices?.getUserMedia) {
-    photoStatusText.textContent = "อุปกรณ์นี้ไม่รองรับการเปิดกล้อง";
-    return;
-  }
+if (!navigator.mediaDevices?.getUserMedia) {
+photoStatusText.textContent = "อุปกรณ์นี้ไม่รองรับการเปิดกล้อง";
+return;
+}
 
-  try {
-    stopPhotoCamera();
+try {
+stopPhotoCamera();
 
-    photoStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: "user"
-      },
-      audio: false
-    });
+photoStream = await navigator.mediaDevices.getUserMedia({
+video: {
+facingMode: "user"
+},
+audio: false
+});
 
-    photoVideo.srcObject = photoStream;
-    await photoVideo.play();
-    capturePhotoBtn.disabled = false;
-    photoStatusText.textContent = "กล้องพร้อมแล้ว กดถ่ายภาพเพื่อยืนยันตัวตน";
-  } catch (error) {
-    console.error("Photo camera error:", error);
-    photoStatusText.textContent = "ไม่สามารถเปิดกล้องถ่ายภาพได้";
-    stopPhotoCamera();
-  }
+photoVideo.srcObject = photoStream;
+await photoVideo.play();
+capturePhotoBtn.disabled = false;
+photoStatusText.textContent = "กล้องพร้อมแล้ว กดถ่ายภาพเพื่อยืนยันตัวตน";
+} catch (error) {
+console.error("Photo camera error:", error);
+photoStatusText.textContent = "ไม่สามารถเปิดกล้องถ่ายภาพได้";
+stopPhotoCamera();
+}
 }
 
 function capturePhoto() {
-  if (!photoVideo.videoWidth || !photoVideo.videoHeight) {
-    photoStatusText.textContent = "กล้องยังไม่พร้อมสำหรับการถ่ายภาพ";
-    return;
-  }
+if (!photoVideo.videoWidth || !photoVideo.videoHeight) {
+photoStatusText.textContent = "กล้องยังไม่พร้อมสำหรับการถ่ายภาพ";
+return;
+}
 
-  photoCanvas.width = photoVideo.videoWidth;
-  photoCanvas.height = photoVideo.videoHeight;
+photoCanvas.width = photoVideo.videoWidth;
+photoCanvas.height = photoVideo.videoHeight;
 
-  const context = photoCanvas.getContext("2d");
-  context.drawImage(photoVideo, 0, 0, photoCanvas.width, photoCanvas.height);
+const context = photoCanvas.getContext("2d");
+context.drawImage(photoVideo, 0, 0, photoCanvas.width, photoCanvas.height);
 
-  photoCanvas.toBlob((blob) => {
-    if (!blob) {
-      photoStatusText.textContent = "ถ่ายภาพไม่สำเร็จ กรุณาลองใหม่";
-      return;
-    }
+photoCanvas.toBlob((blob) => {
+if (!blob) {
+photoStatusText.textContent = "ถ่ายภาพไม่สำเร็จ กรุณาลองใหม่";
+return;
+}
 
-    currentPhotoBlob = blob;
+currentPhotoBlob = blob;
 
-    if (currentPhotoPreviewUrl) {
-      URL.revokeObjectURL(currentPhotoPreviewUrl);
-    }
+if (currentPhotoPreviewUrl) {
+URL.revokeObjectURL(currentPhotoPreviewUrl);
+}
 
-    currentPhotoPreviewUrl = URL.createObjectURL(blob);
-    capturedImage.src = currentPhotoPreviewUrl;
-    capturedImage.classList.remove("hidden");
-    photoPlaceholder.classList.add("hidden");
-    retakePhotoBtn.disabled = false;
-    usePhotoBtn.disabled = false;
-    photoStatusText.textContent = "ถ่ายภาพเรียบร้อยแล้ว พร้อมอัปโหลดก่อนเช็คชื่อ";
-    identityStatusText.textContent = "ถ่ายภาพยืนยันตัวตนเรียบร้อยแล้ว";
-    stopPhotoCamera();
-  }, "image/jpeg", 0.92);
+currentPhotoPreviewUrl = URL.createObjectURL(blob);
+capturedImage.src = currentPhotoPreviewUrl;
+capturedImage.classList.remove("hidden");
+photoPlaceholder.classList.add("hidden");
+retakePhotoBtn.disabled = false;
+usePhotoBtn.disabled = false;
+photoStatusText.textContent = "ถ่ายภาพเรียบร้อยแล้ว พร้อมอัปโหลดก่อนเช็คชื่อ";
+identityStatusText.textContent = "ถ่ายภาพยืนยันตัวตนเรียบร้อยแล้ว";
+stopPhotoCamera();
+}, "image/jpeg", 0.92);
 }
 
 async function requestUploadTarget() {
-  const response = await fetch(UPLOAD_API_URL, {
-    method: "GET"
-  });
+const response = await fetch(UPLOAD_API_URL, {
+method: "GET"
+});
 
-  const result = await response.json();
-  const data = result.data || result;
+const result = await response.json();
+const data = result.data || result;
 
-  if (!response.ok) {
-    throw new Error(result.message || "ไม่สามารถขอลิงก์อัปโหลดรูปได้");
-  }
+if (!response.ok) {
+throw new Error(result.message || "ไม่สามารถขอลิงก์อัปโหลดรูปได้");
+}
 
-  if (!data.upload_url || !data.file_path) {
-    throw new Error("upload api ไม่ได้ส่ง upload_url หรือ file_path กลับมา");
-  }
+if (!data.upload_url || !data.file_path) {
+throw new Error("upload api ไม่ได้ส่ง upload_url หรือ file_path กลับมา");
+}
 
-  return data;
+return data;
 }
 
 async function uploadCapturedImage() {
-  if (!currentPhotoBlob) {
-    throw new Error("กรุณาถ่ายภาพก่อนเช็คชื่อ");
-  }
+if (!currentPhotoBlob) {
+throw new Error("กรุณาถ่ายภาพก่อนเช็คชื่อ");
+}
 
-  const { upload_url, file_path } = await requestUploadTarget();
+const { upload_url, file_path } = await requestUploadTarget();
 
-  const uploadResponse = await fetch(upload_url, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "image/jpeg"
-    },
-    body: currentPhotoBlob
-  });
+const uploadResponse = await fetch(upload_url, {
+method: "PUT",
+headers: {
+"Content-Type": "image/jpeg"
+},
+body: currentPhotoBlob
+});
 
-  if (!uploadResponse.ok) {
-    throw new Error("อัปโหลดรูปไป S3 ไม่สำเร็จ");
-  }
+if (!uploadResponse.ok) {
+const errorText = await uploadResponse.text().catch(() => "");
+throw new Error(`อัปโหลดรูปไป S3 ไม่สำเร็จ: ${uploadResponse.status} ${errorText}`);
+}
 
-  return file_path;
+return file_path;
 }
 
 function loadCurrentLocation() {
-  setConfirmEnabled(false);
+setConfirmEnabled(false);
 
-  if (!navigator.geolocation) {
-    locationInput.value = "ไม่รองรับการใช้งานตำแหน่ง";
-    locationStatusText.textContent = "อุปกรณ์นี้ไม่รองรับการดึงตำแหน่ง";
-    currentLatitude = null;
-    currentLongitude = null;
-    return;
-  }
+if (!navigator.geolocation) {
+locationInput.value = "ไม่รองรับการใช้งานตำแหน่ง";
+locationStatusText.textContent = "อุปกรณ์นี้ไม่รองรับการดึงตำแหน่ง";
+currentLatitude = null;
+currentLongitude = null;
+return;
+}
 
-  locationInput.value = "กำลังดึงตำแหน่ง...";
-  locationTag.textContent = "กำลังดึงพิกัด...";
-  locationStatusText.textContent = "ระบบกำลังดึงตำแหน่งของคุณ";
+locationInput.value = "กำลังดึงตำแหน่ง...";
+locationTag.textContent = "กำลังดึงพิกัด...";
+locationStatusText.textContent = "ระบบกำลังดึงตำแหน่งของคุณ";
 
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      currentLatitude = position.coords.latitude;
-      currentLongitude = position.coords.longitude;
+navigator.geolocation.getCurrentPosition(
+(position) => {
+currentLatitude = position.coords.latitude;
+currentLongitude = position.coords.longitude;
 
-      locationInput.value =
-        `พิกัดของคุณ ${currentLatitude.toFixed(6)}, ${currentLongitude.toFixed(6)}`;
-      locationStatusText.textContent = "พบตำแหน่งแล้ว กดยืนยันเพื่อไปต่อ";
-      updateMapPreview(currentLatitude, currentLongitude);
-      setConfirmEnabled(Boolean(currentSessionId));
-    },
-    (error) => {
-      currentLatitude = null;
-      currentLongitude = null;
+locationInput.value =
+`พิกัดของคุณ ${currentLatitude.toFixed(6)}, ${currentLongitude.toFixed(6)}`;
+locationStatusText.textContent = "พบตำแหน่งแล้ว กดยืนยันเพื่อไปต่อ";
+updateMapPreview(currentLatitude, currentLongitude);
+setConfirmEnabled(Boolean(currentSessionId));
+},
+(error) => {
+currentLatitude = null;
+currentLongitude = null;
 
-      switch (error.code) {
-        case error.PERMISSION_DENIED:
-          locationInput.value = "คุณไม่ได้อนุญาตให้เข้าถึงตำแหน่ง";
-          break;
-        case error.POSITION_UNAVAILABLE:
-          locationInput.value = "ไม่สามารถดึงตำแหน่งปัจจุบันได้";
-          break;
-        case error.TIMEOUT:
-          locationInput.value = "การดึงตำแหน่งใช้เวลานานเกินไป";
-          break;
-        default:
-          locationInput.value = "เกิดข้อผิดพลาดในการดึงตำแหน่ง";
-      }
+switch (error.code) {
+case error.PERMISSION_DENIED:
+locationInput.value = "คุณไม่ได้อนุญาตให้เข้าถึงตำแหน่ง";
+break;
+case error.POSITION_UNAVAILABLE:
+locationInput.value = "ไม่สามารถดึงตำแหน่งปัจจุบันได้";
+break;
+case error.TIMEOUT:
+locationInput.value = "การดึงตำแหน่งใช้เวลานานเกินไป";
+break;
+default:
+locationInput.value = "เกิดข้อผิดพลาดในการดึงตำแหน่ง";
+}
 
-      locationTag.textContent = "ยังไม่พบพิกัดปัจจุบัน";
-      locationStatusText.textContent = "กรุณาลองดึงตำแหน่งอีกครั้ง";
-      setConfirmEnabled(false);
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0
-    }
-  );
+locationTag.textContent = "ยังไม่พบพิกัดปัจจุบัน";
+locationStatusText.textContent = "กรุณาลองดึงตำแหน่งอีกครั้ง";
+setConfirmEnabled(false);
+},
+{
+enableHighAccuracy: true,
+timeout: 10000,
+maximumAge: 0
+}
+);
 }
 
 function buildCheckinPayload(imageUrl) {
-  if (!currentSessionId) {
-    alert("ยังไม่ได้สแกน QR");
-    return null;
-  }
+if (!currentSessionId) {
+alert("ยังไม่ได้สแกน QR");
+return null;
+}
 
-  if (currentLatitude === null || currentLongitude === null) {
-    alert("ยังไม่พบตำแหน่งปัจจุบัน");
-    return null;
-  }
+if (currentLatitude === null || currentLongitude === null) {
+alert("ยังไม่พบตำแหน่งปัจจุบัน");
+return null;
+}
 
-  return {
-    line_user_id: studentData.lineUserId,
-    session_id: currentSessionId,
-    student_id: studentData.studentId,
-    latitude: currentLatitude,
-    longitude: currentLongitude,
-    image_url: imageUrl
-  };
+return {
+line_user_id: studentData.lineUserId,
+session_id: currentSessionId,
+student_id: studentData.studentId,
+latitude: currentLatitude,
+longitude: currentLongitude,
+image_url: imageUrl
+};
 }
 
 async function submitCheckin() {
-  try {
-    const activeLineUserId = await getActiveLineUserId();
+try {
+const activeLineUserId = await getActiveLineUserId();
 
-    if (!activeLineUserId) {
-      return;
-    }
+if (!activeLineUserId) {
+return;
+}
 
-    studentData.lineUserId = activeLineUserId;
+studentData.lineUserId = activeLineUserId;
 
-    saveBtn.disabled = true;
-    saveBtn.textContent = "กำลังอัปโหลดรูป...";
+saveBtn.disabled = true;
+saveBtn.textContent = "กำลังอัปโหลดรูป...";
 
-    const imageUrl = await uploadCapturedImage();
-    const payload = buildCheckinPayload(imageUrl);
+const imageUrl = await uploadCapturedImage();
+const payload = buildCheckinPayload(imageUrl);
 
-    if (!payload) return;
+if (!payload) {
+return;
+}
 
-    saveBtn.textContent = "กำลังบันทึก...";
+saveBtn.textContent = "กำลังบันทึก...";
 
-    const response = await fetch(`${API_BASE_URL}/check-in`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
+const response = await fetch(`${API_BASE_URL}/check-in`, {
+method: "POST",
+headers: {
+"Content-Type": "application/json"
+},
+body: JSON.stringify(payload)
+});
 
-    const result = await response.json();
+const result = await response.json();
 
-    if (!response.ok) {
-      throw new Error(result.message || "เกิดข้อผิดพลาดจากเซิร์ฟเวอร์");
-    }
+if (!response.ok || result.success === false) {
+throw new Error(result.message || "เกิดข้อผิดพลาดจากเซิร์ฟเวอร์");
+}
 
-    alert(result.message || "เช็คชื่อสำเร็จ");
-  } catch (error) {
-    console.error("submitCheckin error:", error);
-    alert(error.message || "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้");
-  } finally {
-    saveBtn.disabled = false;
-    saveBtn.textContent = "บันทึก";
-  }
+alert(result.message || "เช็คชื่อสำเร็จ");
+} catch (error) {
+console.error("submitCheckin error:", error);
+alert("Check-in error: " + (error.message || "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้"));
+} finally {
+saveBtn.disabled = false;
+saveBtn.textContent = "บันทึก";
+}
 }
 
 scanBtn.addEventListener("click", beginQrScanning);
 
 if (scanImageBtn && qrImageInput) {
-  scanImageBtn.addEventListener("click", () => {
-    qrImageInput.click();
-  });
+scanImageBtn.addEventListener("click", () => {
+qrImageInput.click();
+});
 
-  qrImageInput.addEventListener("change", (event) => {
-    const [file] = event.target.files;
+qrImageInput.addEventListener("change", (event) => {
+const [file] = event.target.files;
 
-    if (file) {
-      scanQrFromImage(file);
-    }
+if (file) {
+scanQrFromImage(file);
+}
 
-    qrImageInput.value = "";
-  });
+qrImageInput.value = "";
+});
 }
 
 refreshLocationBtn.addEventListener("click", loadCurrentLocation);
 
 rescanBtn.addEventListener("click", () => {
-  currentSessionId = "";
-  updateSessionBadge("ยังไม่ได้สแกน QR", false);
-  scanStatus.textContent = "กดปุ่มด้านล่างเพื่อเปิดกล้องและสแกน QR ของอาจารย์";
-  showPage(scanPage);
-  beginQrScanning();
+currentSessionId = "";
+updateSessionBadge("ยังไม่ได้สแกน QR", false);
+scanStatus.textContent = "กดปุ่มด้านล่างเพื่อเปิดกล้องและสแกน QR ของอาจารย์";
+showPage(scanPage);
+beginQrScanning();
 });
 
 confirmBtn.addEventListener("click", () => {
-  if (!currentSessionId || currentLatitude == null || currentLongitude == null) {
-    return;
-  }
+if (!currentSessionId || currentLatitude == null || currentLongitude == null) {
+return;
+}
 
-  renderClassInfo();
-  showPage(classInfoPage);
+renderClassInfo();
+showPage(classInfoPage);
 });
 
 openCameraStepBtn.addEventListener("click", () => {
-  showPage(cameraPage);
-  resetCapturedPhoto();
-  openPhotoCamera();
+showPage(cameraPage);
+resetCapturedPhoto();
+openPhotoCamera();
 });
 
 saveBtn.addEventListener("click", submitCheckin);
 capturePhotoBtn.addEventListener("click", capturePhoto);
 
 retakePhotoBtn.addEventListener("click", () => {
-  resetCapturedPhoto();
-  openPhotoCamera();
+resetCapturedPhoto();
+openPhotoCamera();
 });
 
 usePhotoBtn.addEventListener("click", () => {
-  if (!currentPhotoBlob) {
-    alert("กรุณาถ่ายภาพก่อน");
-    return;
-  }
+if (!currentPhotoBlob) {
+alert("กรุณาถ่ายภาพก่อน");
+return;
+}
 
-  renderReviewInfo();
-  showPage(reviewPage);
+renderReviewInfo();
+showPage(reviewPage);
 });
 
 reviewRetakeBtn.addEventListener("click", () => {
-  showPage(cameraPage);
-  resetCapturedPhoto();
-  openPhotoCamera();
+showPage(cameraPage);
+resetCapturedPhoto();
+openPhotoCamera();
 });
 
 const closeBtn = document.querySelector(".close-btn");
 
+if (closeBtn) {
 closeBtn.addEventListener("click", () => {
-  stopHtml5QrScanner();
-  stopScanner();
-  stopPhotoCamera();
-  window.history.back();
+stopHtml5QrScanner();
+stopScanner();
+stopPhotoCamera();
+window.history.back();
 });
+}
 
 window.addEventListener("beforeunload", () => {
-  stopHtml5QrScanner();
-  stopScanner();
-  stopPhotoCamera();
+stopHtml5QrScanner();
+stopScanner();
+stopPhotoCamera();
 });
 
 updateSessionBadge("ยังไม่ได้สแกน QR", false);
@@ -647,22 +652,22 @@ renderClassInfo();
 resetCapturedPhoto();
 
 getActiveLineUserId().then((lineUserId) => {
-  if (lineUserId) {
-    studentData.lineUserId = lineUserId;
-  }
+if (lineUserId) {
+studentData.lineUserId = lineUserId;
+}
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-  const params = new URLSearchParams(window.location.search);
-  const urlSessionId = params.get("session_id");
+const params = new URLSearchParams(window.location.search);
+const urlSessionId = params.get("session_id");
 
-  if (urlSessionId) {
-    currentSessionId = urlSessionId;
+if (urlSessionId) {
+currentSessionId = urlSessionId;
 
-    updateSessionBadge(`Session ID: ${currentSessionId}`);
+updateSessionBadge(`Session ID: ${currentSessionId}`);
 
-    showPage(locationPage);
+showPage(locationPage);
 
-    loadCurrentLocation();
-  }
+loadCurrentLocation();
+}
 });
