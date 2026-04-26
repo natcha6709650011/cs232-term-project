@@ -1,12 +1,53 @@
-// 1. กำหนดค่าเริ่มต้น (เดี๋ยวเอา URL จริงจากเพื่อนมาใส่)
-const API_BASE_URL = "https://9y8xshv9ek.execute-api.us-east-1.amazonaws.com"; 
+// 1. กำหนดค่าเริ่มต้น
+const API_BASE_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com";
+// ADDED: LIFF ID ตัวจริงจาก LINE Developers
+const LIFF_ID = "2009731150-FBugBxC4";
 let currentClassId = ""; // เก็บไว้ใช้ตอนส่ง Start Session
+let activeLineUserId = "";
+
+// ADDED: ดึง line_user_id จริงของอาจารย์จาก LIFF แล้วเก็บไว้ใช้ทั้งหน้า
+async function initializeTeacherLiff() {
+    if (typeof liff !== "undefined") {
+        try {
+            await liff.init({ liffId: LIFF_ID });
+
+            if (!liff.isLoggedIn()) {
+                liff.login();
+                return "";
+            }
+
+            const profile = await liff.getProfile();
+
+            if (profile?.userId) {
+                activeLineUserId = profile.userId;
+                localStorage.setItem("line_user_id", profile.userId);
+                localStorage.setItem("line_profile", JSON.stringify(profile));
+                return profile.userId;
+            }
+        } catch (error) {
+            console.warn("teacher LIFF init failed:", error);
+        }
+    }
+
+    const savedLineUserId = localStorage.getItem("line_user_id");
+
+    if (savedLineUserId) {
+        activeLineUserId = savedLineUserId;
+        return savedLineUserId;
+    }
+
+    return "";
+}
 
 // 2. ฟังก์ชันดึงข้อมูลวิชามาโชว์ (ยิงไปที่ getClassInfo)
 async function fetchClassData() {
     try {
-        // ในงานจริง line_user_id จะได้มาจาก LIFF ของเพื่อน
-        const lineUserId = "U123456789"; 
+        // ADDED: ใช้ line_user_id จริงจาก LIFF/localStorage แทน mock
+        const lineUserId = await initializeTeacherLiff();
+        if (!lineUserId) {
+            console.warn("ยังไม่พบ line_user_id ของอาจารย์");
+            return;
+        }
         
         const response = await fetch(`${API_BASE_URL}/class/${lineUserId}`);
         const result = await response.json();
@@ -32,8 +73,16 @@ async function fetchClassData() {
 document.getElementById('btn-confirm').addEventListener('click', async () => {
     // ขอพิกัด GPS ก่อนส่ง (สำหรับคาบ Onsite)
     navigator.geolocation.getCurrentPosition(async (position) => {
+        const lineUserId = await initializeTeacherLiff();
+
+        if (!lineUserId) {
+            alert("ยังไม่พบ line_user_id ของอาจารย์");
+            return;
+        }
+
         const payload = {
-            line_user_id: "U123456789", // Mock ไว้ก่อน
+            // ADDED: ใช้ line_user_id จริงจาก LIFF/localStorage
+            line_user_id: lineUserId,
             class_id: currentClassId,
             type: "onsite",
             latitude: position.coords.latitude,
@@ -74,4 +123,4 @@ function closeLiff() {
 }
 
 // รันฟังก์ชันโหลดข้อมูลทันทีที่เปิดหน้าเว็บ
-fetchClassData();
+initializeTeacherLiff().then(fetchClassData);

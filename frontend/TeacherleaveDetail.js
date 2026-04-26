@@ -1,64 +1,84 @@
-let currentPhotoPath = "";
+const API_BASE_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com";
+const VIEW_URL_API = "https://w763mkyzm5.execute-api.us-east-1.amazonaws.com/default/generate-view-url";
 
+// ฟังก์ชันรับข้อมูลการลามาแสดงผล
 function renderLeaveDetail(data) {
-    document.getElementById('std-name').innerText = data.name || "ไม่ระบุชื่อ";
-    document.getElementById('std-id').innerText = data.studentId || "-";
-    document.getElementById('leave-type').innerText = data.type || "-";
-    document.getElementById('leave-reason').innerText = data.reason || "-";
+    // data ควรเป็น Object เช่น { name: "...", studentId: "...", reason: "..." }
+    document.getElementById("std-name").innerText = data.name || "ไม่ระบุชื่อ";
+    document.getElementById("std-id").innerText = data.studentId || "-";
+    document.getElementById("leave-type").innerText = data.type || "-";
+    document.getElementById("leave-reason").innerText = data.reason || "-";
 
-    if (data.photoPath) {
-        currentPhotoPath = data.photoPath;
-        fetchViewUrl(data.photoPath);
+    // รองรับชื่อ field หลายแบบ เผื่อ backend ส่งมาไม่เหมือนกัน
+    const photoPath = data.photoPath || data.attachment_url || data.attachment_path || data.image_url;
+
+    if (photoPath) {
+        fetchViewUrl(photoPath);
     }
 }
 
 async function fetchViewUrl(path) {
-    const res = await fetch(`https://w763mkyzm5.execute-api.us-east-1.amazonaws.com/default/generate-view-url?file_path=${path}`);
-    const url = await res.text();
-    document.getElementById('evidence-img').src = url;
+    try {
+        const res = await fetch(`${VIEW_URL_API}?file_path=${encodeURIComponent(path)}`);
+
+        if (!res.ok) {
+            throw new Error("ไม่สามารถดึงลิงก์รูปหลักฐานได้");
+        }
+
+        const url = await res.text();
+        document.getElementById("evidence-img").src = url;
+    } catch (err) {
+        console.error("fetchViewUrl error:", err);
+        alert("ไม่สามารถโหลดรูปหลักฐานได้");
+    }
 }
 
-// ✅ เพิ่มตรงนี้
 async function submitApproval(status) {
-    const params = new URLSearchParams(window.location.search);
-    const leaveId = params.get('leaveId');
+    // status = "approved" หรือ "rejected"
+    const leaveId = getLeaveIdFromUrl();
 
-    // ถ้าทดสอบใน PC ยังไม่มี leaveId ก็แจ้งให้รู้ก่อน
     if (!leaveId) {
-        alert("ทดสอบบน PC: leaveId = null\nจริงๆ ต้องเปิดผ่าน LINE LIFF");
+        alert("ไม่พบ leaveId");
         return;
     }
 
     try {
-        const response = await fetch("https://xxxxxxx.execute-api.us-east-1.amazonaws.com/default/update-leave-status", {
+        const response = await fetch(`${API_BASE_URL}/update-leave-status`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ leaveId, status })
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                leaveId: leaveId,
+                status: status
+            })
         });
 
-        if (response.ok) {
-            alert(status === "approved" ? "✅ อนุมัติสำเร็จ" : "❌ ไม่อนุมัติสำเร็จ");
-            window.close();
-        } else {
-            alert("เกิดข้อผิดพลาด กรุณาลองใหม่");
+        let result = null;
+
+        try {
+            result = await response.json();
+        } catch (err) {
+            result = null;
         }
+
+        if (!response.ok || (result && result.success === false)) {
+            throw new Error(result?.message || "อัปเดตสถานะไม่สำเร็จ");
+        }
+
+        alert(status === "approved" ? "อนุมัติสำเร็จ" : "ไม่อนุมัติสำเร็จ");
+        window.location.href = "teacher-dashboard.html";
     } catch (err) {
-        alert("ไม่สามารถเชื่อมต่อได้: " + err.message);
+        console.error("submitApproval error:", err);
+        alert(err.message || "เกิดข้อผิดพลาด กรุณาลองใหม่");
     }
 }
 
-function openPhoto() {
-    if (!currentPhotoPath) return;
-    window.open(`TeacherViewPicture.html?file_path=${encodeURIComponent(currentPhotoPath)}`);
+function getLeaveIdFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("leaveId");
 }
 
-// ==============================
-// 🧪 Mock ไว้ทดสอบ — ลบตอน deploy จริง
-// ==============================
-renderLeaveDetail({
-    name: "มานะ ใจดี",
-    studentId: "6401005678",
-    type: "ลาป่วย",
-    reason: "ป่วย มีไข้สูง ไปพบแพทย์",
-    photoPath: "attendance/9bef1645-49e9-4bed-887f-20836fad43d9.jpg"
-});
+function openPhoto(photoPath) {
+    window.open(`TeacherViewPicture.html?file_path=${encodeURIComponent(photoPath)}`, "_blank");
+}

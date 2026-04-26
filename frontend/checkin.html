@@ -16,23 +16,29 @@
         <div class="scan-top">
           <p class="scan-label">Step 1</p>
           <h1 class="scan-title">สแกน QR ห้องเรียน</h1>
-          <p id="scanStatus" class="scan-status">กดปุ่มด้านล่างเพื่อเปิดกล้องและสแกน QR ของอาจารย์</p>
+          <p id="scanStatus" class="scan-status">
+            กดปุ่มด้านล่างเพื่อเปิดกล้องและสแกน QR ของอาจารย์
+          </p>
         </div>
 
-        <div class="scanner-box">
-          <video id="scannerVideo" class="scanner-video" autoplay playsinline muted></video>
-          <div class="scanner-overlay"></div>
-          <div class="corner top-left"></div>
-          <div class="corner top-right"></div>
-          <div class="corner bottom-left"></div>
-          <div class="corner bottom-right"></div>
-          <div class="scan-line"></div>
-        </div>
+        <!-- ใช้ตัวสแกน QR จริงจาก html5-qrcode เท่านั้น -->
+        <div id="qrReader" style="width: 100%; max-width: 360px; margin: 24px auto;"></div>
 
         <div id="sessionBadge" class="session-badge hidden">ยังไม่ได้สแกน QR</div>
 
         <button id="scanBtn" class="pill-btn" type="button">
           เปิดกล้องสแกน QR
+        </button>
+
+        <input
+          type="file"
+          id="qrImageInput"
+          accept="image/*"
+          style="display: none;"
+        />
+
+        <button type="button" id="scanImageBtn" class="pill-btn">
+          เลือกรูป QR จากแกลอรี่
         </button>
       </div>
     </section>
@@ -114,7 +120,6 @@
             <p id="identityStatusText" class="identity-status">ยังไม่ได้ถ่ายภาพยืนยันตัวตน</p>
           </div>
 
-          <!-- ADDED: ปุ่มนี้พาไปหน้ากล้องแยกสำหรับยืนยันตัวตน -->
           <button id="openCameraStepBtn" class="primary-gradient-btn save-btn" type="button">
             ยืนยันตัวตน
           </button>
@@ -122,7 +127,6 @@
       </div>
     </section>
 
-    <!-- ADDED: หน้ากล้องแยกหลังจากกด "ยืนยันตัวตน" -->
     <section id="cameraPage" class="page">
       <div class="camera-page">
         <div class="title-bar">ยืนยันตัวตน</div>
@@ -143,14 +147,12 @@
           <div class="camera-actions">
             <button id="capturePhotoBtn" class="primary-gradient-btn" type="button" disabled>ถ่ายภาพ</button>
             <button id="retakePhotoBtn" class="secondary-btn" type="button" disabled>ถ่ายอีกครั้ง</button>
-            <!-- ADDED: ใช้รูปนี้แล้วกลับไปหน้าสรุปก่อนบันทึก -->
             <button id="usePhotoBtn" class="primary-gradient-btn" type="button" disabled>ใช้รูปนี้</button>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ADDED: หน้าสุดท้ายหลังยืนยันตัวตนเสร็จ พร้อมกดส่งเช็คชื่อ -->
     <section id="reviewPage" class="page">
       <div class="class-page">
         <div class="title-bar">เช็คชื่อเข้าห้องเรียน</div>
@@ -184,6 +186,8 @@
 
   </div>
 
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
   <script src="checkin.js"></script>
 </body>
 </html>
