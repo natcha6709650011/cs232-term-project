@@ -106,7 +106,7 @@ textarea {
 
 .compact-grid {
   display: grid;
-  grid-template-columns: 1.05fr 1fr;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
   gap: 12px;
 }
 
@@ -114,6 +114,7 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
 }
 
 .field span,
@@ -126,6 +127,7 @@ textarea {
 input,
 textarea {
   width: 100%;
+  min-width: 0;
   border: 2px solid var(--line);
   border-radius: 12px;
   background: var(--panel);
@@ -137,6 +139,12 @@ textarea {
 
 input {
   height: 52px;
+}
+
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-inline: 14px;
 }
 
 textarea {
@@ -344,12 +352,13 @@ textarea:focus {
 }
 
 .viewer-modal {
-  max-width: 360px;
+  width: min(92vw, 430px);
+  max-width: 430px;
 }
 
 .viewer-card {
   text-align: left;
-  padding: 24px 20px 20px;
+  padding: 24px 18px 18px;
 }
 
 .viewer-header {
@@ -385,11 +394,12 @@ textarea:focus {
 }
 
 .viewer-content {
-  min-height: 320px;
+  min-height: 420px;
+  max-height: 68vh;
   border-radius: 18px;
   background: #f8faff;
   border: 2px solid var(--line);
-  overflow: hidden;
+  overflow: auto;
 }
 
 .viewer-content.empty {
@@ -437,10 +447,20 @@ textarea:focus {
 .viewer-content img,
 .viewer-content iframe {
   width: 100%;
-  height: 320px;
+  height: auto;
   border: none;
   display: block;
   background: #ffffff;
+}
+
+.viewer-content iframe {
+  min-height: 420px;
+}
+
+@media (max-width: 768px) {
+  .compact-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 430px) {
@@ -480,7 +500,6 @@ textarea:focus {
     font-size: 15px;
   }
 
-  .compact-grid,
   .sub-action-row {
     grid-template-columns: 1fr;
   }
@@ -498,5 +517,18 @@ textarea:focus {
 
   .modal-card h3 {
     font-size: 22px;
+  }
+
+  .viewer-modal {
+    width: min(94vw, 390px);
+  }
+
+  .viewer-card {
+    padding: 22px 14px 16px;
+  }
+
+  .viewer-content {
+    min-height: 52vh;
+    max-height: 70vh;
   }
 }
