@@ -207,10 +207,11 @@ uploadDropzone.addEventListener("drop", (event) => {
   handleFileSelection(file || null);
 });
 async function requestLeaveUploadTarget(file) {
-  const response = await fetch(UPLOAD_API_URL, {
-    method: "GET"
-  });
+  const contentType = file?.type || "application/octet-stream";
+  const separator = UPLOAD_API_URL.includes("?") ? "&" : "?";
+  const url = `${UPLOAD_API_URL}${separator}content_type=${encodeURIComponent(contentType)}`;
 
+  const response = await fetch(url, { method: "GET" });
   const result = await response.json();
   const data = result.data || result;
 
@@ -226,25 +227,30 @@ async function requestLeaveUploadTarget(file) {
 }
 
 async function uploadLeaveAttachment(file) {
-  if (!file) {
+  if (!file) return null;
+
+  try {
+    const contentType = file.type || "application/octet-stream";
+    const { upload_url, file_path } = await requestLeaveUploadTarget(file);
+
+    const uploadResponse = await fetch(upload_url, {
+      method: "PUT",
+      headers: { "Content-Type": contentType },
+      body: file
+    });
+
+    if (!uploadResponse.ok) {
+      console.warn("leave attachment upload failed:", uploadResponse.status);
+      alert("อัปโหลดไฟล์แนบไม่สำเร็จ ระบบจะส่งคำขอลาโดยไม่มีไฟล์แนบ");
+      return null;
+    }
+
+    return file_path;
+  } catch (error) {
+    console.warn("leave attachment upload error:", error);
+    alert("อัปโหลดไฟล์แนบไม่สำเร็จ ระบบจะส่งคำขอลาโดยไม่มีไฟล์แนบ");
     return null;
   }
-
-  const { upload_url, file_path } = await requestLeaveUploadTarget(file);
-
-  const uploadResponse = await fetch(upload_url, {
-    method: "PUT",
-    headers: {
-      "Content-Type": file.type || "application/octet-stream"
-    },
-    body: file
-  });
-
-  if (!uploadResponse.ok) {
-    throw new Error("อัปโหลดไฟล์แนบไม่สำเร็จ");
-  }
-
-  return file_path;
 }
 
 leaveForm.addEventListener("submit", async (event) => {
