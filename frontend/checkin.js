@@ -329,6 +329,8 @@ currentPhotoPreviewUrl = "";
 
 capturedImage.src = "";
 capturedImage.classList.add("hidden");
+// ADDED: ตอน reset ต้องกลับมาโชว์ video stream เพื่อให้ผู้ใช้ถ่ายใหม่ได้
+photoVideo.classList.remove("hidden");
 photoPlaceholder.classList.remove("hidden");
 retakePhotoBtn.disabled = true;
 usePhotoBtn.disabled = true;
@@ -352,6 +354,8 @@ audio: false
 });
 
 photoVideo.srcObject = photoStream;
+// ADDED: เปิดกล้องใหม่ทุกครั้งต้องแน่ใจว่า preview video ถูกแสดงอยู่
+photoVideo.classList.remove("hidden");
 await photoVideo.play();
 capturePhotoBtn.disabled = false;
 photoStatusText.textContent = "กล้องพร้อมแล้ว กดถ่ายภาพเพื่อยืนยันตัวตน";
@@ -389,6 +393,8 @@ URL.revokeObjectURL(currentPhotoPreviewUrl);
 currentPhotoPreviewUrl = URL.createObjectURL(blob);
 capturedImage.src = currentPhotoPreviewUrl;
 capturedImage.classList.remove("hidden");
+// ADDED: เมื่อถ่ายเสร็จให้ซ่อน video แล้วโชว์รูป preview แทน
+photoVideo.classList.add("hidden");
 photoPlaceholder.classList.add("hidden");
 retakePhotoBtn.disabled = false;
 usePhotoBtn.disabled = false;

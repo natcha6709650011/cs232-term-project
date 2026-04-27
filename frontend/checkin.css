@@ -574,10 +574,23 @@ body {
 
 .photo-video,
 .captured-image {
+  /* ADDED: ให้ video กับรูป preview ซ้อนทับอยู่ในกรอบเดียวกัน */
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.photo-video {
+  /* ADDED: video อยู่ชั้นล่าง ใช้ตอน preview กล้องสด */
+  z-index: 1;
+}
+
+.captured-image {
+  /* ADDED: รูปที่ถ่ายแล้วอยู่ชั้นบน เพื่อสลับมาแสดงหลัง capture */
+  z-index: 2;
 }
 
 .captured-image.hidden,
