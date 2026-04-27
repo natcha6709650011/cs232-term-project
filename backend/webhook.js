@@ -25,33 +25,43 @@ exports.handler = async (event) => {
             if (e.type === 'postback' && e.postback.data === 'action=check_status') isTriggered = true;
 
             if (isTriggered) {
-                const data = await dynamodb.query({
-                    TableName: "Attendance",
-                    IndexName: "line_user_id-index",
-                    KeyConditionExpression: "line_user_id = :uid",
-                    ExpressionAttributeValues: { ":uid": userId },
-                    ScanIndexForward: false,
-                    Limit: 5
+                const user = await dynamodb.get({
+                    TableName: "Users",
+                    Key: { line_user_id: userId }
                 }).promise();
 
-                // ป้องกันกรณีไม่พบข้อมูล
-                if (data.Items.length === 0) {
-                    await client.replyMessage(e.replyToken, { type: 'text', text: "ไม่พบประวัติการเข้าเรียนของคุณ" });
+                const lastSessionId = user.Item?.last_session_id;
+
+                if (!lastSessionId) {
+                    await client.replyMessage(e.replyToken, { type: 'text', text: "คุณยังไม่มีประวัติการเช็คชื่อล่าสุดครับ" });
                     return;
                 }
 
+                const data = await dynamodb.query({
+                    TableName: "Attendance",
+                    KeyConditionExpression: "session_id = :sid AND line_user_id = :uid",
+                    ExpressionAttributeValues: { 
+                        ":sid": lastSessionId,
+                        ":uid": userId 
+                    }
+                }).promise();
+
+                if (data.Items.length === 0) {
+                    await client.replyMessage(e.replyToken, { type: 'text', text: "ไม่พบข้อมูลการเช็คชื่อในวิชาล่าสุด" });
+                    return;
+                }
+
+                const item = data.Items[0];
                 const flex = {
                     type: "flex",
-                    altText: "สถานะการเข้าเรียน",
+                    altText: "สถานะล่าสุด",
                     contents: {
                         type: "bubble",
                         body: { type: "box", layout: "vertical", contents: [
-                            { type: "text", text: "ประวัติการเข้าเรียนล่าสุด", weight: "bold", size: "lg" },
+                            { type: "text", text: "สถานะการเช็คชื่อล่าสุด", weight: "bold", size: "lg" },
                             { type: "separator", margin: "md" },
-                            ...data.Items.map(i => ({ type: "box", layout: "horizontal", margin: "md", contents: [
-                                { type: "text", text: i.course_name || "ไม่ระบุวิชา", size: "sm", flex: 3 },
-                                { type: "text", text: i.status === "present" ? "มาเรียน" : "ขาดเรียน", align: "end", color: i.status === "present" ? "#3EB489" : "#FF6B6B", size: "sm" }
-                            ]}))
+                            { type: "text", text: item.course_name || "ไม่ระบุวิชา", margin: "md" },
+                            { type: "text", text: item.status === "present" ? "มาเรียน" : "ขาดเรียน", color: item.status === "present" ? "#3EB489" : "#FF6B6B" }
                         ]}
                     }
                 };

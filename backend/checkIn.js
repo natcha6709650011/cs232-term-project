@@ -204,3 +204,28 @@ exports.handler = async (event) => {
     });
   }
 };
+
+await dynamodb.put({
+  TableName: ATTENDANCE_TABLE,
+  Item: attendanceItem
+}).promise();
+
+try {
+  await dynamodb.update({
+    TableName: USERS_TABLE, 
+    Key: { line_user_id },
+    UpdateExpression: "SET last_session_id = :sid",
+    ExpressionAttributeValues: {
+      ":sid": session_id
+    }
+  }).promise();
+  console.log(`Updated last_session_id for user: ${line_user_id} to ${session_id}`);
+} catch (err) {
+  console.error("Error updating last_session_id:", err);
+}
+
+return response(200, {
+  success: true,
+  message: "check-in success",
+  data: attendanceItem
+});
