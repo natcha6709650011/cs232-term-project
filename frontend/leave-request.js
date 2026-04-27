@@ -25,6 +25,7 @@ const reasonButtons = Array.from(document.querySelectorAll(".reason-option"));
 // ADDED: LIFF ID ตัวจริงจาก LINE Developers
 const LIFF_ID = "2009731150-FBugBxC4";
 const API_BASE_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com";
+const ACTIVE_SESSION_API_URL = `${API_BASE_URL}/active-session`;
 const UPLOAD_API_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com/generate-upload-url?folder=leave";
 let selectedReason = "ลากิจ";
 let selectedFile = null;
@@ -261,6 +262,48 @@ function goBackToLineMenu() {
   window.location.href = "login.html";
 }
 
+async function getActiveSessionId() {
+  const params = new URLSearchParams(window.location.search);
+
+  const urlSessionId = params.get("session_id");
+
+  if (urlSessionId) {
+    localStorage.setItem("session_id", urlSessionId);
+    return urlSessionId;
+  }
+
+  const savedSessionId = localStorage.getItem("session_id");
+
+  if (savedSessionId) {
+    return savedSessionId;
+  }
+
+  const response = await fetch(ACTIVE_SESSION_API_URL, {
+    method: "GET"
+  });
+
+  let result = null;
+
+  try {
+    result = await response.json();
+  } catch (error) {
+    throw new Error("ไม่สามารถอ่านข้อมูล session จาก server ได้");
+  }
+
+  if (!response.ok || result.success === false) {
+    throw new Error(result?.message || "ไม่พบ session ที่เปิดอยู่");
+  }
+
+  const sessionId = result.session_id || result.data?.session_id;
+
+  if (!sessionId) {
+    throw new Error("active session api ไม่ได้ส่ง session_id กลับมา");
+  }
+
+  localStorage.setItem("session_id", sessionId);
+  return sessionId;
+}
+
 leaveForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -273,12 +316,7 @@ leaveForm.addEventListener("submit", async (event) => {
       throw new Error("ไม่พบ LINE user id กรุณาเข้าสู่ระบบใหม่");
     }
 
-    const params = new URLSearchParams(window.location.search);
-    const sessionId = params.get("session_id") || localStorage.getItem("session_id");
-
-    if (!sessionId) {
-      throw new Error("ไม่พบ session_id สำหรับการลา");
-    }
+    const sessionId = await getActiveSessionId();
 
     resultDate.textContent = formatDate(leaveDateInput.value);
     resultReason.textContent = selectedReason;
@@ -293,7 +331,7 @@ leaveForm.addEventListener("submit", async (event) => {
       reason: leaveNoteInput.value.trim() || selectedReason,
       note: leaveNoteInput.value.trim(),
       attachment_url: attachmentPath,
-      attachment_name: selectedFile ? selectedFile.name : null
+      attachment_name: attachmentPath && selectedFile ? selectedFile.name : null
     };
 
     const response = await fetch(`${API_BASE_URL}/leave`, {
