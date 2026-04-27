@@ -523,6 +523,43 @@ image_url: imageUrl
 };
 }
 
+function resetCheckinToScanPage() {
+  currentSessionId = "";
+  currentLatitude = null;
+  currentLongitude = null;
+
+  localStorage.removeItem("session_id");
+
+  stopHtml5QrScanner();
+  stopScanner();
+  stopPhotoCamera();
+  resetCapturedPhoto();
+
+  setConfirmEnabled(false);
+  updateSessionBadge("ยังไม่ได้สแกน QR", false);
+
+  scanStatus.textContent = "กดปุ่มด้านล่างเพื่อเปิดกล้องและสแกน QR ของอาจารย์";
+  locationInput.value = "กำลังดึงตำแหน่ง...";
+  locationTag.textContent = "กำลังดึงพิกัด...";
+  locationStatusText.textContent = "ระบบกำลังดึงตำแหน่งของคุณ";
+
+  showPage(scanPage);
+}
+
+function goBackToLineMenu() {
+  stopHtml5QrScanner();
+  stopScanner();
+  stopPhotoCamera();
+
+  localStorage.removeItem("session_id");
+
+  if (typeof liff !== "undefined" && liff.isInClient && liff.isInClient()) {
+    liff.closeWindow();
+    return;
+  }
+
+  window.location.href = "login.html";
+}
 async function submitCheckin() {
 try {
 const activeLineUserId = await getActiveLineUserId();
@@ -560,6 +597,7 @@ throw new Error(result.message || "เกิดข้อผิดพลาดจ
 }
 
 alert(result.message || "เช็คชื่อสำเร็จ");
+goBackToLineMenu();
 
 // สำคัญ: ปิดหน้าต่าง LIFF ทันทีหลังเช็คชื่อสำเร็จ
 if (typeof liff !== "undefined") {
@@ -569,6 +607,7 @@ if (typeof liff !== "undefined") {
 } catch (error) {
 console.error("submitCheckin error:", error);
 alert("Check-in error: " + (error.message || "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้"));
+resetCheckinToScanPage();
 } finally {
 saveBtn.disabled = false;
 saveBtn.textContent = "บันทึก";
