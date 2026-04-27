@@ -100,28 +100,26 @@ function saveLoginResult(profile, role) {
 }
 
 function goToNextPage() {
+  // 1. เช็คสิทธิ์ (ถ้าไม่มีสิทธิ์ ให้แสดง Error ก่อนเลย)
+  if (!pendingRole) {
+    failMessage.textContent = "ไม่พบสิทธิ์ผู้ใช้งาน";
+    openOverlay(failOverlay);
+    return;
+  }
+
+  // 2. ถ้าเปิดใน LINE ให้ปิด LIFF ทันทีทุกกรณี (เพื่อกลับไปที่หน้าแชท)
+  // วิธีนี้จะทำให้ผู้ใช้เห็น Rich Menu ใหม่ได้ทันทีหลังจาก Login สำเร็จ
   if (typeof liff !== "undefined" && liff.isInClient()) {
     liff.closeWindow();
     return;
   }
 
-  // 2. ถ้าไม่ได้เปิดใน LINE (เช่น เทสใน Chrome บนคอมพิวเตอร์) ให้ทำงานตามปกติ
+  // 3. ถ้าไม่ได้เปิดใน LINE (เช่น เทสในคอม) ให้เปลี่ยนหน้าตามสิทธิ์
   if (pendingRole === "teacher") {
     window.location.href = "teacher-dashboard.html";
-    return;
+  } else if (pendingRole === "student") {
+    window.location.href = "checkin.html";
   }
-
-  if (pendingRole === "student") {
-    if (typeof liff !== "undefined" && liff.isInClient()) {
-      liff.closeWindow(); 
-    } else {
-      window.location.href = "checkin.html";
-    }
-    return;
-  }
-
-  failMessage.textContent = "ไม่พบสิทธิ์ผู้ใช้งาน";
-  openOverlay(failOverlay);
 }
 
 function getFriendlyErrorMessage(result, fallbackMessage) {
