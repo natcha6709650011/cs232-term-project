@@ -252,6 +252,14 @@ async function uploadLeaveAttachment(file) {
     return null;
   }
 }
+function goBackToLineMenu() {
+  if (typeof liff !== "undefined" && liff.isInClient && liff.isInClient()) {
+    liff.closeWindow();
+    return;
+  }
+
+  window.location.href = "login.html";
+}
 
 leaveForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -302,7 +310,8 @@ leaveForm.addEventListener("submit", async (event) => {
       throw new Error(result.message || "ส่งคำขอลาไม่สำเร็จ");
     }
 
-    openDialog(successDialog);
+    alert("ส่งคำขอลาสำเร็จ");
+    goBackToLineMenu();
   } catch (error) {
     console.error("leave request error:", error);
     alert(error.message || "ส่งคำขอลาไม่สำเร็จ");

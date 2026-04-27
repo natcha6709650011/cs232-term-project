@@ -498,59 +498,97 @@ return file_path;
 }
 
 function loadCurrentLocation() {
-setConfirmEnabled(false);
+  setConfirmEnabled(false);
 
-if (!navigator.geolocation) {
-locationInput.value = "ไม่รองรับการใช้งานตำแหน่ง";
-locationStatusText.textContent = "อุปกรณ์นี้ไม่รองรับการดึงตำแหน่ง";
-currentLatitude = null;
-currentLongitude = null;
-return;
-}
+  if (!navigator.geolocation) {
+    locationInput.value = "ไม่รองรับการใช้งานตำแหน่ง";
+    locationStatusText.textContent = "อุปกรณ์นี้ไม่รองรับการดึงตำแหน่ง";
+    currentLatitude = null;
+    currentLongitude = null;
+    return;
+  }
 
-locationInput.value = "กำลังดึงตำแหน่ง...";
-locationTag.textContent = "กำลังดึงพิกัด...";
-locationStatusText.textContent = "ระบบกำลังดึงตำแหน่งของคุณ";
+  locationInput.value = "กำลังดึงตำแหน่ง...";
+  locationTag.textContent = "กำลังดึงพิกัด...";
+  locationStatusText.textContent = "ระบบกำลังดึงตำแหน่งของคุณ";
 
-navigator.geolocation.getCurrentPosition(
-(position) => {
-currentLatitude = position.coords.latitude;
-currentLongitude = position.coords.longitude;
+  let isFinished = false;
 
-locationInput.value =
-`พิกัดของคุณ ${currentLatitude.toFixed(6)}, ${currentLongitude.toFixed(6)}`;
-locationStatusText.textContent = "พบตำแหน่งแล้ว กดยืนยันเพื่อไปต่อ";
-updateMapPreview(currentLatitude, currentLongitude);
-setConfirmEnabled(Boolean(currentSessionId));
-},
-(error) => {
-currentLatitude = null;
-currentLongitude = null;
+  const fallbackTimer = setTimeout(() => {
+    if (isFinished) return;
 
-switch (error.code) {
-case error.PERMISSION_DENIED:
-locationInput.value = "คุณไม่ได้อนุญาตให้เข้าถึงตำแหน่ง";
-break;
-case error.POSITION_UNAVAILABLE:
-locationInput.value = "ไม่สามารถดึงตำแหน่งปัจจุบันได้";
-break;
-case error.TIMEOUT:
-locationInput.value = "การดึงตำแหน่งใช้เวลานานเกินไป";
-break;
-default:
-locationInput.value = "เกิดข้อผิดพลาดในการดึงตำแหน่ง";
-}
+    isFinished = true;
+    currentLatitude = null;
+    currentLongitude = null;
 
-locationTag.textContent = "ยังไม่พบพิกัดปัจจุบัน";
-locationStatusText.textContent = "กรุณาลองดึงตำแหน่งอีกครั้ง";
-setConfirmEnabled(false);
-},
-{
-enableHighAccuracy: true,
-timeout: 10000,
-maximumAge: 0
-}
-);
+    locationInput.value = "ดึงตำแหน่งไม่สำเร็จ กรุณากดรีเฟรชตำแหน่ง";
+    locationTag.textContent = "ยังไม่พบพิกัดปัจจุบัน";
+    locationStatusText.textContent = "กรุณาเปิด Location และกดปุ่มรีเฟรชอีกครั้ง";
+    setConfirmEnabled(false);
+
+    alert("ดึงตำแหน่งนานเกินไป กรุณาเปิด Location/GPS แล้วกดรีเฟรชตำแหน่งอีกครั้ง");
+  }, 8000);
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      if (isFinished) return;
+
+      isFinished = true;
+      clearTimeout(fallbackTimer);
+
+      currentLatitude = position.coords.latitude;
+      currentLongitude = position.coords.longitude;
+
+      locationInput.value =
+        `พิกัดของคุณ ${currentLatitude.toFixed(6)}, ${currentLongitude.toFixed(6)}`;
+      locationStatusText.textContent = "พบตำแหน่งแล้ว กดยืนยันเพื่อไปต่อ";
+
+      updateMapPreview(currentLatitude, currentLongitude);
+      setConfirmEnabled(Boolean(currentSessionId));
+    },
+    (error) => {
+      if (isFinished) return;
+
+      isFinished = true;
+      clearTimeout(fallbackTimer);
+
+      currentLatitude = null;
+      currentLongitude = null;
+
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          locationInput.value = "คุณไม่ได้อนุญาตให้เข้าถึงตำแหน่ง";
+          locationStatusText.textContent = "กรุณาอนุญาต Location ให้ LINE";
+          alert("กรุณาอนุญาตให้ LINE ใช้ตำแหน่ง Location");
+          break;
+
+        case error.POSITION_UNAVAILABLE:
+          locationInput.value = "ไม่สามารถดึงตำแหน่งปัจจุบันได้";
+          locationStatusText.textContent = "กรุณาเปิด GPS แล้วลองใหม่";
+          alert("ไม่สามารถดึงตำแหน่งได้ กรุณาเปิด GPS/Location แล้วกดรีเฟรช");
+          break;
+
+        case error.TIMEOUT:
+          locationInput.value = "การดึงตำแหน่งใช้เวลานานเกินไป";
+          locationStatusText.textContent = "กรุณากดรีเฟรชตำแหน่งอีกครั้ง";
+          alert("ดึงตำแหน่งนานเกินไป กรุณากดรีเฟรชตำแหน่งอีกครั้ง");
+          break;
+
+        default:
+          locationInput.value = "เกิดข้อผิดพลาดในการดึงตำแหน่ง";
+          locationStatusText.textContent = "กรุณาลองดึงตำแหน่งอีกครั้ง";
+          alert("เกิดข้อผิดพลาดในการดึงตำแหน่ง");
+      }
+
+      locationTag.textContent = "ยังไม่พบพิกัดปัจจุบัน";
+      setConfirmEnabled(false);
+    },
+    {
+      enableHighAccuracy: false,
+      timeout: 7000,
+      maximumAge: 60000
+    }
+  );
 }
 
 function buildCheckinPayload(imageUrl) {
