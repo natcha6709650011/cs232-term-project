@@ -656,9 +656,25 @@ if (typeof liff !== "undefined") {
 }
 
 } catch (error) {
-console.error("submitCheckin error:", error);
-alert("Check-in error: " + (error.message || "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้"));
-resetCheckinToScanPage();
+  console.error("submitCheckin error:", error);
+
+  const errorMessage = error.message || "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้";
+
+  const isAlreadyCheckedIn =
+    errorMessage.includes("already checked in") ||
+    errorMessage.includes("เช็คชื่อแล้ว") ||
+    errorMessage.includes("เช็คอินแล้ว") ||
+    errorMessage.includes("duplicate");
+
+  if (isAlreadyCheckedIn) {
+    alert("คุณเช็คอินแล้ว");
+    goBackToLineMenu();
+    return;
+  }
+
+  alert("Check-in error: " + errorMessage);
+
+  resetCheckinToScanPage();
 } finally {
 saveBtn.disabled = false;
 saveBtn.textContent = "บันทึก";
