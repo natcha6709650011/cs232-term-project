@@ -68,16 +68,18 @@ body {
 
 .pill-btn {
   width: 100%;
-  max-width: 220px;
-  height: 44px;
-  padding: 0 16px;
+  max-width: 280px;
+  min-height: 52px;
+  padding: 0 20px;
   border: none;
   border-radius: 999px;
   background: linear-gradient(180deg, #2f61e8 0%, #2a55d7 100%);
   color: #fff;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
+  line-height: 1.2;
   cursor: pointer;
+  box-shadow: 0 12px 24px rgba(47, 97, 232, 0.18);
 }
 
 .hidden {
@@ -103,7 +105,7 @@ body {
 .scan-page {
   min-height: 100vh;
   background: #efefef;
-  padding: 34px 18px 26px;
+  padding: 28px 22px 34px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -112,8 +114,8 @@ body {
 .scan-top {
   width: 100%;
   text-align: center;
-  margin-top: 28px;
-  margin-bottom: 22px;
+  margin-top: 46px;
+  margin-bottom: 18px;
 }
 
 .scan-label {
@@ -126,17 +128,37 @@ body {
 }
 
 .scan-title {
-  font-size: 28px;
+  font-size: clamp(30px, 8vw, 34px);
   color: #111;
-  margin-bottom: 10px;
+  line-height: 1.16;
+  margin-bottom: 12px;
 }
 
 .scan-status {
   color: #4f5666;
   font-size: 14px;
-  line-height: 1.55;
-  max-width: 300px;
+  line-height: 1.65;
+  max-width: 320px;
   margin: 0 auto;
+}
+
+.scan-action-group {
+  width: 100%;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.scan-primary-btn {
+  margin-top: 6px;
+}
+
+.scan-secondary-btn {
+  background: #ffffff;
+  color: #2f61e8;
+  border: 1px solid #cfd7eb;
+  box-shadow: 0 10px 20px rgba(20, 25, 34, 0.08);
 }
 
 .scanner-box {
@@ -439,6 +461,10 @@ body {
   padding: 28px 20px;
 }
 
+#reviewPage .content {
+  padding-top: 34px;
+}
+
 .class-card {
   background: #fff;
   border-radius: 22px;
@@ -477,6 +503,15 @@ body {
   font-size: 18px;
 }
 
+#reviewPage .class-card {
+  margin-bottom: 34px;
+}
+
+#reviewPage .save-btn {
+  margin-bottom: 16px;
+  box-shadow: 0 14px 28px rgba(47, 97, 232, 0.2);
+}
+
 .identity-card {
   background: #fff;
   border-radius: 22px;
@@ -498,31 +533,43 @@ body {
   line-height: 1.5;
 }
 
-/* ADDED: หน้ากล้องสำหรับยืนยันตัวตน */
+/* ADDED: โครงหลักของหน้า camera step สำหรับยืนยันตัวตน */
 .camera-page {
   min-height: 100vh;
-  background: #cfcfcf;
+  background: #ffffff;
+}
+
+/* ADDED: หัวสีน้ำเงินด้านบนให้หน้ากล้องดูเป็นอีก step ชัดเจน */
+.camera-header-bar {
+  background: linear-gradient(180deg, #2f61e8 0%, #2a55d7 100%);
+  text-align: center;
+  padding: 22px 16px 18px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
 }
 
 .camera-content {
-  padding: 28px 20px;
+  padding: 28px 22px 34px;
 }
 
 .camera-text {
   text-align: center;
-  font-size: 14px;
-  color: #555;
-  margin-bottom: 18px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #7b7b7b;
+  margin-bottom: 24px;
 }
 
+/* ADDED: กล่อง preview กล้องสัดส่วนแนวตั้งให้เหมาะกับการถ่ายหน้า */
 .camera-preview-wrap {
   position: relative;
   width: 100%;
-  aspect-ratio: 4 / 3;
-  border-radius: 18px;
+  aspect-ratio: 4 / 5.6;
+  border-radius: 26px;
   overflow: hidden;
-  background: #1d2330;
-  margin-bottom: 14px;
+  background: #d9d9d9;
+  margin-bottom: 28px;
 }
 
 .photo-video,
@@ -544,37 +591,237 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.8);
+  flex-direction: column;
+  color: rgba(255, 255, 255, 0.84);
   font-size: 16px;
   font-weight: 700;
-  background: linear-gradient(180deg, rgba(20, 24, 34, 0.2), rgba(20, 24, 34, 0.6));
+  background: linear-gradient(180deg, rgba(20, 24, 34, 0.12), rgba(20, 24, 34, 0.28));
 }
 
-.camera-actions {
+/* ADDED: กรอบ guide เบา ๆ ช่วยให้จัดใบหน้าอยู่กลางเฟรม */
+.camera-guide {
+  position: absolute;
+  inset: 16% 16%;
+  border-radius: 24px;
+  border: 2px solid rgba(255, 255, 255, 0.24);
+}
+
+.camera-guide-line {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 999px;
+}
+
+.camera-guide-line.top,
+.camera-guide-line.bottom {
+  left: 50%;
+  width: 68px;
+  height: 4px;
+  transform: translateX(-50%);
+}
+
+.camera-guide-line.top {
+  top: 14px;
+}
+
+.camera-guide-line.bottom {
+  bottom: 14px;
+}
+
+.camera-guide-line.left,
+.camera-guide-line.right {
+  top: 50%;
+  width: 4px;
+  height: 68px;
+  transform: translateY(-50%);
+}
+
+.camera-guide-line.left {
+  left: 14px;
+}
+
+.camera-guide-line.right {
+  right: 14px;
+}
+
+.camera-placeholder-text {
+  position: relative;
+  z-index: 2;
+  margin-top: 12px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+}
+
+/* ADDED: แถวปุ่มล่าง 3 ส่วน โดยให้ปุ่มถ่ายภาพตรงกลางเด่นที่สุด */
+.camera-action-row {
   display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) 76px;
+  align-items: center;
+  gap: 18px;
+}
+
+.camera-icon-btn,
+.camera-capture-btn {
+  border: none;
+  border-radius: 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.camera-icon-btn {
+  height: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* ADDED: ปุ่มซ้ายใช้สำหรับ reset/ถ่ายใหม่ */
+.camera-cancel-btn {
+  background: #e98a9d;
+  color: #111111;
+}
+
+/* ADDED: ปุ่มขวาใช้สำหรับยืนยันรูปที่ถ่ายแล้ว */
+.camera-confirm-btn {
+  background: #27b2a8;
+  color: #ffffff;
+}
+
+/* ADDED: ปุ่มกลางเป็น primary action ของหน้านี้ */
+.camera-capture-btn {
+  height: 58px;
+  background: linear-gradient(180deg, #2f61e8 0%, #2a55d7 100%);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   gap: 10px;
+  font-size: 16px;
+  box-shadow: 0 14px 26px rgba(47, 97, 232, 0.22);
+}
+
+.camera-symbol {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.camera-close-line,
+.camera-check-line {
+  position: absolute;
+  background: currentColor;
+  border-radius: 999px;
+}
+
+.camera-close-line {
+  top: 50%;
+  left: 50%;
+  width: 22px;
+  height: 3px;
+  transform-origin: center;
+}
+
+.camera-close-line.first {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.camera-close-line.second {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.camera-check-line.short {
+  left: 6px;
+  top: 15px;
+  width: 8px;
+  height: 3px;
+  transform: rotate(45deg);
+}
+
+.camera-check-line.long {
+  left: 11px;
+  top: 13px;
+  width: 14px;
+  height: 3px;
+  transform: rotate(-45deg);
+}
+
+.camera-capture-icon {
+  position: relative;
+  width: 22px;
+  height: 16px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.camera-glyph-body {
+  position: absolute;
+  inset: 3px 0 0;
+  border: 2px solid rgba(255, 255, 255, 0.96);
+  border-radius: 5px;
+}
+
+.camera-glyph-lens {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  border: 2px solid rgba(255, 255, 255, 0.96);
+  border-radius: 50%;
+  transform: translateX(-50%);
+}
+
+.camera-glyph-top {
+  position: absolute;
+  top: 0;
+  left: 4px;
+  width: 8px;
+  height: 5px;
+  border: 2px solid rgba(255, 255, 255, 0.96);
+  border-bottom: none;
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
+}
+
+.camera-icon-btn:disabled,
+.camera-capture-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ADDED: ปุ่มรองสำหรับกลับไปถ่ายภาพใหม่ในหน้าสรุป */
 .retake-btn {
   width: 100%;
-  height: 60px;
+  height: 56px;
   border: none;
   border-radius: 14px;
-  background: linear-gradient(180deg, #ffb347 0%, #ff9800 100%);
+  background: linear-gradient(180deg, #ffc76b 0%, #ffac2f 100%);
   color: #fff;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
   cursor: pointer;
+  box-shadow: 0 10px 20px rgba(255, 171, 46, 0.18);
 }
 
 @media (max-width: 390px) {
   .scan-page {
-    padding: 28px 14px 22px;
+    padding: 26px 18px 28px;
   }
 
   .scan-title {
     font-size: 24px;
+  }
+
+  .scan-top {
+    margin-top: 42px;
+  }
+
+  .pill-btn {
+    max-width: 100%;
+    min-height: 50px;
+    font-size: 14px;
   }
 
   .scanner-box {
@@ -607,6 +854,10 @@ body {
     padding: 22px 16px;
   }
 
+  #reviewPage .content {
+    padding-top: 28px;
+  }
+
   .class-card {
     border-radius: 18px;
   }
@@ -618,6 +869,35 @@ body {
 
   .camera-content {
     padding: 22px 16px;
+  }
+
+  .camera-header-bar {
+    font-size: 17px;
+    padding: 20px 14px 16px;
+  }
+
+  .camera-text {
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+
+  .camera-preview-wrap {
+    border-radius: 22px;
+    margin-bottom: 22px;
+  }
+
+  .camera-action-row {
+    grid-template-columns: 70px minmax(0, 1fr) 70px;
+    gap: 12px;
+  }
+
+  .camera-icon-btn {
+    height: 52px;
+  }
+
+  .camera-capture-btn {
+    height: 54px;
+    font-size: 15px;
   }
 
   .card-header {
@@ -633,5 +913,10 @@ body {
   .save-btn {
     height: 56px;
     font-size: 17px;
+  }
+
+  .retake-btn {
+    height: 52px;
+    font-size: 16px;
   }
 }

@@ -26,20 +26,22 @@
 
         <div id="sessionBadge" class="session-badge hidden">ยังไม่ได้สแกน QR</div>
 
-        <button id="scanBtn" class="pill-btn" type="button">
-          เปิดกล้องสแกน QR
-        </button>
+        <div class="scan-action-group">
+          <button id="scanBtn" class="pill-btn scan-primary-btn" type="button">
+            เปิดกล้องสแกน QR
+          </button>
 
-        <input
-          type="file"
-          id="qrImageInput"
-          accept="image/*"
-          style="display: none;"
-        />
+          <input
+            type="file"
+            id="qrImageInput"
+            accept="image/*"
+            style="display: none;"
+          />
 
-        <button type="button" id="scanImageBtn" class="pill-btn">
-          เลือกรูป QR จากแกลอรี่
-        </button>
+          <button type="button" id="scanImageBtn" class="pill-btn scan-secondary-btn">
+            เลือกรูป QR จากแกลอรี่
+          </button>
+        </div>
       </div>
     </section>
 
@@ -127,27 +129,53 @@
       </div>
     </section>
 
+    <!-- ADDED: หน้า camera step สำหรับยืนยันตัวตนก่อนส่งเช็คชื่อ -->
     <section id="cameraPage" class="page">
       <div class="camera-page">
-        <div class="title-bar">ยืนยันตัวตน</div>
+        <div class="camera-header-bar">ยืนยันตัวตน</div>
 
         <div class="camera-content">
-          <p id="photoStatusText" class="camera-text">จัดใบหน้าให้อยู่ในกรอบ แล้วกดถ่ายภาพ</p>
+          <p id="photoStatusText" class="camera-text">กล้องพร้อมแล้วกดถ่ายภาพยืนยันตัวตน</p>
 
+          <!-- ADDED: พื้นที่ preview กล้อง/รูปที่ถ่าย พร้อม guide frame กลางจอ -->
           <div class="camera-preview-wrap">
             <video id="photoVideo" class="photo-video" autoplay playsinline muted></video>
             <img id="capturedImage" class="captured-image hidden" alt="Captured preview" />
             <div id="photoPlaceholder" class="photo-placeholder">
-              ยังไม่ได้ถ่ายภาพ
+              <div class="camera-guide">
+                <span class="camera-guide-line top"></span>
+                <span class="camera-guide-line bottom"></span>
+                <span class="camera-guide-line left"></span>
+                <span class="camera-guide-line right"></span>
+              </div>
+              <span class="camera-placeholder-text">ยังไม่ได้ถ่ายภาพ</span>
             </div>
           </div>
 
           <canvas id="photoCanvas" class="hidden"></canvas>
 
-          <div class="camera-actions">
-            <button id="capturePhotoBtn" class="primary-gradient-btn" type="button" disabled>ถ่ายภาพ</button>
-            <button id="retakePhotoBtn" class="secondary-btn" type="button" disabled>ถ่ายอีกครั้ง</button>
-            <button id="usePhotoBtn" class="primary-gradient-btn" type="button" disabled>ใช้รูปนี้</button>
+          <!-- ADDED: ปุ่มล่าง 3 ส่วน = ถ่ายใหม่ / ถ่ายภาพ / ยืนยันใช้รูป -->
+          <div class="camera-action-row">
+            <button id="retakePhotoBtn" class="camera-icon-btn camera-cancel-btn" type="button" disabled aria-label="ถ่ายอีกครั้ง">
+              <span class="camera-symbol camera-close-symbol" aria-hidden="true">
+                <span class="camera-close-line first"></span>
+                <span class="camera-close-line second"></span>
+              </span>
+            </button>
+            <button id="capturePhotoBtn" class="camera-capture-btn" type="button" disabled>
+              <span class="camera-capture-icon" aria-hidden="true">
+                <span class="camera-glyph-body"></span>
+                <span class="camera-glyph-lens"></span>
+                <span class="camera-glyph-top"></span>
+              </span>
+              <span>ถ่ายภาพ</span>
+            </button>
+            <button id="usePhotoBtn" class="camera-icon-btn camera-confirm-btn" type="button" disabled aria-label="ใช้รูปนี้">
+              <span class="camera-symbol camera-check-symbol" aria-hidden="true">
+                <span class="camera-check-line short"></span>
+                <span class="camera-check-line long"></span>
+              </span>
+            </button>
           </div>
         </div>
       </div>
