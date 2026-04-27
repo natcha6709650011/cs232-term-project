@@ -19,6 +19,10 @@ const reviewRetakeBtn = document.getElementById("reviewRetakeBtn");
 const scannerVideo = document.getElementById("scannerVideo");
 const scanStatus = document.getElementById("scanStatus");
 const sessionBadge = document.getElementById("sessionBadge");
+const qrDebugBox = document.getElementById("qrDebugBox");
+const qrDebugRaw = document.getElementById("qrDebugRaw");
+const qrDebugSession = document.getElementById("qrDebugSession");
+const qrDebugStatus = document.getElementById("qrDebugStatus");
 
 const locationInput = document.getElementById("locationInput");
 const locationTag = document.getElementById("locationTag");
@@ -137,6 +141,17 @@ sessionBadge.textContent = text;
 sessionBadge.classList.toggle("hidden", !isVisible);
 }
 
+function updateQrDebug({ rawValue = "-", parsedSessionId = "-", status = "รอการสแกน", visible = true } = {}) {
+if (!qrDebugBox || !qrDebugRaw || !qrDebugSession || !qrDebugStatus) {
+return;
+}
+
+qrDebugRaw.textContent = rawValue || "-";
+qrDebugSession.textContent = parsedSessionId || "-";
+qrDebugStatus.textContent = status;
+qrDebugBox.classList.toggle("hidden", !visible);
+}
+
 function renderClassInfo() {
 subjectName.textContent = classData.subjectName;
 sectionText.textContent = classData.section;
@@ -216,6 +231,12 @@ html5QrCode = null;
 async function handleDetectedQr(rawValue) {
 const sessionId = parseSessionIdFromText(rawValue);
 
+updateQrDebug({
+rawValue: rawValue || "-",
+parsedSessionId: sessionId || "-",
+status: sessionId ? "อ่าน QR สำเร็จ" : "อ่าน QR ได้ แต่ไม่พบ session_id"
+});
+
 if (!sessionId) {
 scanStatus.textContent = "ไม่พบ session_id ใน QR Code";
 return;
@@ -242,6 +263,10 @@ return;
 
 try {
 scanStatus.textContent = "กำลังเปิดกล้องสแกน QR...";
+updateQrDebug({
+status: "กำลังเปิดกล้องสแกน QR...",
+visible: true
+});
 
 await stopHtml5QrScanner();
 stopScanner();
@@ -252,6 +277,9 @@ const cameras = await Html5Qrcode.getCameras();
 
 if (!cameras || cameras.length === 0) {
 scanStatus.textContent = "ไม่พบกล้องในอุปกรณ์นี้ กรุณาเลือกรูป QR จากแกลอรี่แทน";
+updateQrDebug({
+status: "ไม่พบกล้องในอุปกรณ์นี้"
+});
 return;
 }
 
@@ -276,10 +304,16 @@ handleDetectedQr(decodedText);
 );
 
 scanStatus.textContent = "กรุณาสแกน QR Code ห้องเรียน";
+updateQrDebug({
+status: "รอการสแกน QR จากกล้อง"
+});
 } catch (error) {
 console.error("QR camera error:", error);
 scanStatus.textContent =
 "ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตการใช้กล้อง หรือเลือกรูป QR จากแกลอรี่แทน";
+updateQrDebug({
+status: "เปิดกล้องสแกน QR ไม่สำเร็จ"
+});
 }
 }
 
@@ -332,6 +366,10 @@ return;
 
 try {
 scanStatus.textContent = "กำลังอ่าน QR จากรูปภาพ...";
+updateQrDebug({
+status: "กำลังอ่าน QR จากรูปภาพ...",
+visible: true
+});
 
 await stopHtml5QrScanner();
 stopScanner();
@@ -357,6 +395,9 @@ handleDetectedQr(decodedText);
 } catch (error) {
 console.error("scan image qr error:", error);
 scanStatus.textContent = "อ่าน QR จากรูปไม่สำเร็จ กรุณาเลือกรูป QR ที่ชัดเจน";
+updateQrDebug({
+status: "อ่าน QR จากรูปไม่สำเร็จ"
+});
 }
 }
 
@@ -628,6 +669,11 @@ function resetCheckinToScanPage() {
   updateSessionBadge("ยังไม่ได้สแกน QR", false);
 
   scanStatus.textContent = "กดปุ่มด้านล่างเพื่อเปิดกล้องและสแกน QR ของอาจารย์";
+  updateQrDebug({
+    rawValue: "-",
+    parsedSessionId: "-",
+    status: "รีเซ็ตกลับไปหน้าเริ่มต้น"
+  });
   locationInput.value = "กำลังดึงตำแหน่ง...";
   locationTag.textContent = "กำลังดึงพิกัด...";
   locationStatusText.textContent = "ระบบกำลังดึงตำแหน่งของคุณ";
@@ -743,6 +789,11 @@ rescanBtn.addEventListener("click", () => {
 currentSessionId = "";
 updateSessionBadge("ยังไม่ได้สแกน QR", false);
 scanStatus.textContent = "กดปุ่มด้านล่างเพื่อเปิดกล้องและสแกน QR ของอาจารย์";
+updateQrDebug({
+rawValue: "-",
+parsedSessionId: "-",
+status: "กดสแกนใหม่แล้ว"
+});
 showPage(scanPage);
 beginQrScanning();
 });
@@ -804,6 +855,12 @@ stopPhotoCamera();
 });
 
 updateSessionBadge("ยังไม่ได้สแกน QR", false);
+updateQrDebug({
+rawValue: "-",
+parsedSessionId: "-",
+status: "รอการสแกน",
+visible: true
+});
 renderClassInfo();
 resetCapturedPhoto();
 
@@ -821,6 +878,11 @@ if (urlSessionId) {
 currentSessionId = urlSessionId;
 
 updateSessionBadge(`Session ID: ${currentSessionId}`);
+updateQrDebug({
+rawValue: `session_id จาก URL: ${urlSessionId}`,
+parsedSessionId: currentSessionId,
+status: "โหลด session_id จาก URL สำเร็จ"
+});
 
 showPage(locationPage);
 

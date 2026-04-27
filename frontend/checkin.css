@@ -248,6 +248,47 @@ body {
   text-align: center;
 }
 
+.qr-debug-box {
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto 18px;
+  padding: 14px 16px;
+  border: 1px solid #d6def3;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 10px 20px rgba(20, 25, 34, 0.06);
+}
+
+.qr-debug-title {
+  margin-bottom: 10px;
+  color: #2f61e8;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.qr-debug-row {
+  color: #4f5666;
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.qr-debug-row + .qr-debug-row {
+  margin-top: 6px;
+}
+
+.qr-debug-row span {
+  color: #7a8190;
+  font-weight: 700;
+}
+
+.qr-debug-row strong {
+  color: #111;
+  font-weight: 700;
+}
+
 .location-page {
   min-height: 100vh;
   background: #efefef;

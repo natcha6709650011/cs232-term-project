@@ -26,6 +26,14 @@
 
         <div id="sessionBadge" class="session-badge hidden">ยังไม่ได้สแกน QR</div>
 
+        <!-- ADDED: กล่อง debug สำหรับดูค่า QR ที่อ่านได้จริงและผลการ parse session_id -->
+        <div id="qrDebugBox" class="qr-debug-box hidden">
+          <p class="qr-debug-title">QR Debug</p>
+          <p class="qr-debug-row"><span>Raw value:</span> <strong id="qrDebugRaw">-</strong></p>
+          <p class="qr-debug-row"><span>Parsed session_id:</span> <strong id="qrDebugSession">-</strong></p>
+          <p class="qr-debug-row"><span>Status:</span> <strong id="qrDebugStatus">รอการสแกน</strong></p>
+        </div>
+
         <div class="scan-action-group">
           <button id="scanBtn" class="pill-btn scan-primary-btn" type="button">
             เปิดกล้องสแกน QR
