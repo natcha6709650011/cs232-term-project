@@ -83,9 +83,36 @@ function closeOverlay(target) {
 }
 
 function saveLoginResult(profile, role) {
+ 
+  const userType = profile.type || profile.role;
+  if (userType === "employee") {
+    role = "employee";
+  }
+ 
   localStorage.setItem("line_user_id", profile.line_user_id);
   localStorage.setItem("user_role", role);
+
+  // --- Demo teacher role ---
+const DEMO_TEACHER_LINE_ID = "U1bd557b9f84be826efc2670b3ff47401";
+
+if (profile.line_user_id === DEMO_TEACHER_LINE_ID) {
+  profile.role = "employee";
+  profile.type = "employee";
+
   localStorage.setItem("user_profile", JSON.stringify(profile));
+  localStorage.setItem("user_role", "employee");
+  localStorage.setItem("role", "employee");
+  localStorage.setItem("type", "employee");
+
+  window.location.href = "teacher-dashboard.html";
+  return; 
+}
+// --------------------------------------------------------
+
+  localStorage.setItem("user_profile", JSON.stringify(profile));
+  localStorage.setItem("user_role", role);
+  localStorage.setItem("role", role);
+  localStorage.setItem("type", profile.type || role);
 
   // ADDED: เก็บ profile LINE เบื้องต้นไว้ เผื่อหน้าอื่นต้องใช้ต่อ
   if (typeof liff !== "undefined" && liff.isLoggedIn()) {
@@ -100,26 +127,28 @@ function saveLoginResult(profile, role) {
 }
 
 function goToNextPage() {
-  // 1. เช็คสิทธิ์ (ถ้าไม่มีสิทธิ์ ให้แสดง Error ก่อนเลย)
+  // 1. เช็คสิทธิ์
   if (!pendingRole) {
     failMessage.textContent = "ไม่พบสิทธิ์ผู้ใช้งาน";
     openOverlay(failOverlay);
     return;
   }
 
-  // 2. ถ้าเปิดใน LINE ให้ปิด LIFF ทันทีทุกกรณี (เพื่อกลับไปที่หน้าแชท)
-  // วิธีนี้จะทำให้ผู้ใช้เห็น Rich Menu ใหม่ได้ทันทีหลังจาก Login สำเร็จ
-  if (typeof liff !== "undefined" && liff.isInClient()) {
-    liff.closeWindow();
+  // 2. ถ้าเป็น employee ให้ไปหน้าอาจารย์
+  if (pendingRole === "employee") {
+    window.location.href = "teacher-dashboard.html";
     return;
   }
 
-  // 3. ถ้าไม่ได้เปิดใน LINE (เช่น เทสในคอม) ให้เปลี่ยนหน้าตามสิทธิ์
-  if (pendingRole === "teacher") {
-    window.location.href = "teacher-dashboard.html";
-  } else if (pendingRole === "student") {
+  // 3. ถ้าเป็น student ให้ไปหน้านักศึกษา
+  if (pendingRole === "student") {
     window.location.href = "checkin.html";
+    return;
   }
+
+  // 4. ถ้า role ไม่ตรง
+  failMessage.textContent = "ไม่พบสิทธิ์ผู้ใช้งาน";
+  openOverlay(failOverlay);
 }
 
 function getFriendlyErrorMessage(result, fallbackMessage) {
@@ -207,12 +236,18 @@ async function submitLogin(event) {
       throw new Error("รูปแบบข้อมูลจาก backend ไม่ถูกต้อง");
     }
 
-    const role = result.data.role;
-    const profile = result.data.profile || result.data; // เผื่อ backend ส่งมาแค่ profile โดยมี role อยู่ใน profile
+let role = result.data.role;
+const profile = result.data.profile || result.data; // เผื่อ backend ส่งมาแค่ profile โดยมี role อยู่ใน profile
 
-    pendingRole = role;
+const userType = profile.type || profile.role || role;
 
-    saveLoginResult(profile, role);
+if (userType === "employee") {
+  role = "employee";
+}
+
+pendingRole = role;
+
+saveLoginResult(profile, role);
 
     openOverlay(successOverlay);
   } catch (error) {

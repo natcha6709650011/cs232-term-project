@@ -47,6 +47,25 @@ async function getAttendance(session_id, line_user_id) {
   return result.Item || null;
 }
 
+async function getLatestLeaveAttendanceByUser(line_user_id) {
+  const result = await dynamodb.scan({
+    TableName: ATTENDANCE_TABLE,
+    FilterExpression: "line_user_id = :uid AND #status = :leave",
+    ExpressionAttributeNames: {
+      "#status": "status"
+    },
+    ExpressionAttributeValues: {
+      ":uid": line_user_id,
+      ":leave": "leave"
+    }
+  }).promise();
+
+  const leaveItems = (result.Items || [])
+    .sort((a, b) => (b.leave_time || b.checkin_time || 0) - (a.leave_time || a.checkin_time || 0));
+
+  return leaveItems[0] || null;
+}
+
 exports.handler = async (event) => {
   console.log("EVENT:", JSON.stringify(event));
 
@@ -75,6 +94,9 @@ exports.handler = async (event) => {
 
         const activeSession = await getLatestActiveSession();
 
+        console.log("WEBHOOK userId:", userId);
+        console.log("WEBHOOK activeSession:", activeSession);
+
         if (!activeSession) {
           return client.replyMessage(replyToken, {
             type: "text",
@@ -82,8 +104,30 @@ exports.handler = async (event) => {
           });
         }
 
-        const attendance = await getAttendance(activeSession.session_id, userId);
+        let attendance = await getAttendance(activeSession.session_id, userId);
 
+        console.log("WEBHOOK attendance before fallback:", attendance);
+
+        // ถ้าหา Attendance ใน session ปัจจุบันไม่เจอ
+        // ให้ลองหา leave ล่าสุดของ user จาก Attendance table
+        if (!attendance) {
+          const latestLeaveAttendance = await getLatestLeaveAttendanceByUser(userId);
+        
+          // ถ้ามี leave ล่าสุด และเป็น class/section เดียวกับ session ปัจจุบัน ให้ใช้เป็นสถานะ
+          if (
+            latestLeaveAttendance &&
+            (
+              latestLeaveAttendance.session_id === activeSession.session_id ||
+              latestLeaveAttendance.class_id === activeSession.class_id ||
+              latestLeaveAttendance.section === activeSession.section
+            )
+          ) {
+            attendance = latestLeaveAttendance;
+          }
+        }
+        
+        console.log("WEBHOOK final attendance:", attendance);
+        
         if (!attendance) {
           return client.replyMessage(replyToken, {
             type: "text",
@@ -95,6 +139,7 @@ exports.handler = async (event) => {
               `หมายเหตุ: หากกดเช็คชื่อแล้วแต่ยังไม่ขึ้น ให้ลองกดใหม่หรือแจ้งอาจารย์`
           });
         }
+      
 
         const statusMap = {
           present: "✅ มาเรียน",
@@ -103,7 +148,15 @@ exports.handler = async (event) => {
           absent: "❌ ขาดเรียน"
         };
 
-        const statusText = statusMap[attendance.status] || "❓ ไม่ทราบสถานะ";
+        let statusText = statusMap[attendance.status] || "❓ ไม่ทราบสถานะ";
+
+        if (attendance.status === "leave") {
+          if (attendance.leave_type === "ลาป่วย") {
+            statusText = "🤒 ลาป่วย";
+          } else if (attendance.leave_type === "ลากิจ") {
+            statusText = "📌 ลากิจ";
+          }
+        }
         const time = formatTime(attendance.checkin_time || attendance.leave_time);
 
         return client.replyMessage(replyToken, {

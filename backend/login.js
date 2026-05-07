@@ -117,11 +117,22 @@ exports.handler = async (event) => {
     // map role
     // ถ้าเป็น employee ให้ถือเป็น teacher
     // ถ้าไม่ใช่ employee ให้ถือเป็น student
-    let role = "student";
+let role = "student";
+let userType = tuData.type || "student";
 
-    if (tuData.type === "employee") {
-      role = "teacher";
-    }
+// DEMO: บังคับ account กลุ่มนี้ให้เป็นอาจารย์
+const DEMO_TEACHER_USERNAMES = [
+  "6709650011",
+  "6709650029",
+  "6709650250"
+];
+
+if (DEMO_TEACHER_USERNAMES.includes(tuData.username)) {
+  userType = "employee";
+  role = "employee";
+} else if (userType === "employee") {
+  role = "employee";
+}
 
     // เตรียม object user ที่จะเก็บลง DynamoDB
     const userItem = {
@@ -135,7 +146,7 @@ exports.handler = async (event) => {
       role,
 
       // ข้อมูลที่ดึงได้จาก TU API
-      type: tuData.type || null,
+      type: userType || null,
       name_th: tuData.displayname_th || null,
       name_en: tuData.displayname_en || null,
       email: tuData.email || null,
@@ -157,7 +168,7 @@ exports.handler = async (event) => {
       .promise();
 
     try {
-      const menuId = (role === 'teacher') ? process.env.TEACHER_MENU_ID : process.env.STUDENT_MENU_ID;
+      const menuId = (role === 'employee') ? process.env.TEACHER_MENU_ID : process.env.STUDENT_MENU_ID;
       await client.linkRichMenuToUser(line_user_id, menuId);
     } catch (err) { console.error("Link Rich Menu Error:", err); }
 
