@@ -85,7 +85,7 @@ function showErrorPage(forceCount = null) {
         btnRetry.innerText = "ติดต่อเจ้าหน้าที่";
         btnRetry.classList.remove('bg-orange-400'); 
         btnRetry.classList.add('bg-red-500');
-        btnRetry.onclick = () => { window.location.href = "https://line.me/ti/p/@admin_tu"; };
+        btnRetry.onclick = () => { window.location.href = "https://line.me/ti/p/@894uryda"; };
     } else {
         errorMsg.innerText = "กรุณาลองใหม่อีกครั้ง";
         btnRetry.innerText = "ลองอีกครั้ง";
