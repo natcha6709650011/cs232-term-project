@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teacher GPS System</title>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .hidden { display: none; }
@@ -57,7 +58,7 @@
             <div class="border rounded-lg py-2 text-sm font-bold mb-6 mx-12 text-center" id="res-time">-</div>
             <div class="flex gap-4 px-4">
                 <button onclick="downloadQRCode()" class="flex-1 bg-blue-800 text-white py-3 rounded-xl font-bold">บันทึก</button>
-                <button onclick="if(window.liff){ liff.closeWindow(); } window.close();" class="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-bold">เสร็จสิ้น</button>
+                <button onclick="if(window.liff){ liff.closeWindow(); } else { window.location.href='teacher-dashboard.html'; }" class="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-bold">เสร็จสิ้น</button>
             </div>
         </div>
     </div>
