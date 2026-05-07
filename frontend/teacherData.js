@@ -130,7 +130,11 @@ function showOnlineQR(result) {
     document.getElementById('qr-time').innerText      = `เวลา ${time}`;
 
     // สร้าง QR จาก checkin_url ที่ Backend ส่งมา (หรือ fallback)
-    const checkinUrl = result.checkin_url || `https://line.me/R/oaMessage/@bot/?checkin=${currentClassId}`;
+    const checkinUrl =
+    result?.data?.checkin_link ||
+    result?.checkin_url ||
+    result?.data?.checkin_url ||
+    `https://liff.line.me/${LIFF_ID}?session_id=${result?.data?.session_id || ""}`;
     document.getElementById('qr-online').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(checkinUrl)}`;
 
     showView('view-qr');
