@@ -185,26 +185,6 @@ function finishProcess() {
 }
 
 async function downloadQRCode() {
-<<<<<<< HEAD
-  const qrImage = document.getElementById("final-qr");
-
-  if (!qrImage.src) return;
-
-  try {
-    const response = await fetch(qrImage.src);
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "QRCode.png";
-    a.click();
-  } catch (e) {
-    alert("ดาวน์โหลดล้มเหลว");
-  }
-}
-
-=======
     const qrImage = document.getElementById('final-qr') || document.getElementById('qr-online');
     if (!qrImage || !qrImage.src) return;
 
@@ -223,4 +203,3 @@ async function downloadQRCode() {
         a.click();
     }
 }
->>>>>>> c00f767ea6a57c194af0245f70c4c0175a6a2b42
