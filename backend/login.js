@@ -123,8 +123,7 @@ let userType = tuData.type || "student";
 // DEMO: บังคับ account กลุ่มนี้ให้เป็นอาจารย์
 const DEMO_TEACHER_USERNAMES = [
   "6709650029",
-  "6709650011",
-  "6709650250"
+  "6709650011"
 ];
 
 if (DEMO_TEACHER_USERNAMES.includes(tuData.username)) {
