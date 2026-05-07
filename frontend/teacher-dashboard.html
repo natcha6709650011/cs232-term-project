@@ -8,58 +8,152 @@
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Kanit', sans-serif; }
+
+        /* Slide transition */
+        .view { display: none; }
+        .view.active { display: block; }
+
+        .slide-in {
+            animation: slideInRight 0.3s ease forwards;
+        }
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(40px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
     </style>
 </head>
 <body class="bg-gray-300 min-h-screen flex items-center justify-center p-4">
 
     <div class="bg-[#f0f0f0] w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl border border-gray-200">
-        
-        <div class="bg-[#3b82f6] p-4 text-white text-center font-semibold relative">
-    ข้อมูลรายวิชา
-    <button onclick="closeLiff()" class="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-200 transition-colors">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-    </button>
-</div>
 
-        <div class="p-6">
-            <div class="space-y-3">
-                <div class="bg-white border border-gray-400 rounded-xl p-3 text-center">
-                    <p class="text-xs text-gray-500">รหัสวิชา</p>
-                    <p id="course-id" class="font-semibold text-gray-800">กำลังโหลด...</p>
-                </div>
-
-                <div class="bg-white border border-gray-400 rounded-xl p-3 text-center">
-                    <p class="text-xs text-gray-500">รายวิชา</p>
-                    <p id="course-name" class="font-semibold text-gray-800">-</p>
-                </div>
-
-                <div class="bg-white border border-gray-400 rounded-xl p-3 text-center">
-                    <p class="text-xs text-gray-500">Section</p>
-                    <p id="section" class="font-semibold text-gray-800">-</p>
-                </div>
-
-                <div class="bg-white border border-gray-400 rounded-xl p-3 text-center">
-                    <p class="text-xs text-gray-500">เวลา</p>
-                    <p id="time-range" class="font-semibold text-gray-800">-</p>
-                </div>
-
-                <div class="bg-white border border-gray-400 rounded-xl p-3 text-center">
-                    <p class="text-xs text-gray-500">จำนวนนักศึกษาลงทะเบียน</p>
-                    <p id="student-count" class="font-semibold text-gray-800">-</p>
-                </div>
+        <!-- ===== VIEW 1: ข้อมูลรายวิชา ===== -->
+        <div id="view-course-info" class="view active">
+            <div class="bg-[#3b82f6] p-4 text-white text-center font-semibold relative">
+                ข้อมูลรายวิชา
+                <button onclick="closeLiff()" class="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-200 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
             </div>
 
-            <button id="btn-confirm" class="w-full bg-[#2563eb] text-white mt-8 py-3 rounded-xl font-bold shadow-lg active:scale-95 transition-transform">
-                ยืนยัน
-            </button>
-        </div>
-    </div>
+            <div class="p-6">
+                <div class="space-y-3">
+                    <div class="bg-white border border-gray-400 rounded-xl p-3 text-center">
+                        <p class="text-xs text-gray-500">รหัสวิชา</p>
+                        <p id="course-id" class="font-semibold text-gray-800">กำลังโหลด...</p>
+                    </div>
+                    <div class="bg-white border border-gray-400 rounded-xl p-3 text-center">
+                        <p class="text-xs text-gray-500">รายวิชา</p>
+                        <p id="course-name" class="font-semibold text-gray-800">-</p>
+                    </div>
+                    <div class="bg-white border border-gray-400 rounded-xl p-3 text-center">
+                        <p class="text-xs text-gray-500">Section</p>
+                        <p id="section" class="font-semibold text-gray-800">-</p>
+                    </div>
+                    <div class="bg-white border border-gray-400 rounded-xl p-3 text-center">
+                        <p class="text-xs text-gray-500">เวลา</p>
+                        <p id="time-range" class="font-semibold text-gray-800">-</p>
+                    </div>
+                    <div class="bg-white border border-gray-400 rounded-xl p-3 text-center">
+                        <p class="text-xs text-gray-500">จำนวนนักศึกษาลงทะเบียน</p>
+                        <p id="student-count" class="font-semibold text-gray-800">-</p>
+                    </div>
+                </div>
 
-    <!-- ADDED: LIFF SDK สำหรับอ่าน line_user_id จริงของอาจารย์ -->
+                <!-- ปุ่มยืนยัน → ไปหน้าเลือกโหมด -->
+                <button id="btn-confirm" onclick="showModeSelect()" class="w-full bg-[#2563eb] text-white mt-8 py-3 rounded-xl font-bold shadow-lg active:scale-95 transition-transform">
+                    ยืนยัน
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== VIEW 2: เลือกโหมดการเช็คชื่อ ===== -->
+        <div id="view-mode-select" class="view">
+            <div class="bg-[#3b82f6] p-4 text-white text-center font-semibold relative">
+                การเช็คชื่อ
+                <button onclick="closeLiff()" class="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-200 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4 mt-4">
+                <!-- ปุ่มออนไซต์ → ไป teacher-GPS.html -->
+                <button onclick="startOnsite()" class="w-full bg-[#2563eb] text-white py-4 rounded-xl font-bold shadow-lg active:scale-95 transition-transform text-lg">
+                    เริ่มคาบเรียนออนไซต์
+                </button>
+
+                <!-- ปุ่มออนไลน์ → เริ่ม session ออนไลน์โดยไม่ต้อง GPS -->
+                <button onclick="startOnline()" class="w-full bg-[#10b981] text-white py-4 rounded-xl font-bold shadow-lg active:scale-95 transition-transform text-lg">
+                    เริ่มคาบเรียนออนไลน์
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== VIEW 3: QR Code (ออนไลน์สำเร็จ) ===== -->
+        <div id="view-qr" class="view">
+            <div class="p-6 text-center">
+                <!-- ไอคอนสำเร็จ -->
+                <div class="flex justify-center mb-3 mt-4">
+                    <div class="w-16 h-16 rounded-full border-4 border-[#10b981] flex items-center justify-center">
+                        <svg class="w-9 h-9 text-[#10b981]" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                </div>
+                <p class="font-bold text-xl mb-5">เริ่มคาบเรียนสำเร็จ!</p>
+
+                <!-- QR Code -->
+                <div class="bg-[#2563eb] p-4 rounded-3xl inline-block mb-5 shadow-inner">
+                    <img id="qr-online" src="" class="w-48 h-48 bg-white rounded-xl" alt="QR Code">
+                </div>
+
+                <!-- ข้อมูลวิชา -->
+                <div class="flex justify-center gap-2 mb-3">
+                    <div class="border border-gray-300 rounded-lg px-4 py-2 text-sm font-bold" id="qr-course-id">-</div>
+                    <div class="border border-gray-300 rounded-lg px-4 py-2 text-sm font-bold" id="qr-section">-</div>
+                </div>
+                <div class="border border-gray-300 rounded-lg py-2 text-sm font-bold mb-6 mx-8 text-center" id="qr-time">-</div>
+
+                <!-- ปุ่ม -->
+                <div class="flex gap-4">
+                    <button onclick="downloadQRCode()" class="flex-1 bg-[#1e3a8a] text-white py-3 rounded-xl font-bold">บันทึก</button>
+                    <button onclick="finishProcess()" class="flex-1 bg-[#10b981] text-white py-3 rounded-xl font-bold">เสร็จสิ้น</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== VIEW 4: ออนไลน์ไม่สำเร็จ ===== -->
+        <div id="view-online-error" class="view">
+            <div class="p-8 text-center">
+                <div class="flex justify-center mb-4 mt-4">
+                    <div class="w-16 h-16 bg-red-100 rounded-full border-2 border-red-500 flex items-center justify-center">
+                        <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </div>
+                </div>
+                <h2 class="font-bold text-xl mb-2">เริ่มคาบเรียนไม่สำเร็จ!</h2>
+                <p id="online-error-msg" class="text-sm text-gray-500 mb-6">กรุณาลองใหม่อีกครั้ง</p>
+
+                <div class="flex justify-center gap-2 mb-3">
+                    <div class="border rounded-lg px-4 py-2 text-xs font-bold text-gray-700" id="online-error-course-id">-</div>
+                    <div class="border rounded-lg px-4 py-2 text-xs font-bold text-gray-700" id="online-error-section">-</div>
+                </div>
+                <div class="border rounded-lg py-2 text-xs font-bold text-gray-700 mb-8 mx-10 text-center" id="online-error-time">-</div>
+
+                <div class="flex gap-4">
+                    <button id="btn-online-retry" onclick="retryOnline()" class="flex-1 bg-orange-400 text-white py-3 rounded-xl font-bold">ลองอีกครั้ง</button>
+                    <button onclick="finishProcess()" class="flex-1 bg-[#10b981] text-white py-3 rounded-xl font-bold">เสร็จสิ้น</button>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- end card -->
+
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <!-- ADDED: ใช้ teacherData.js เป็นไฟล์หลักของหน้านี้ -->
     <script src="teacherData.js"></script>
 </body>
 </html>
