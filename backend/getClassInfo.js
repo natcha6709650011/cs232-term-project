@@ -103,13 +103,13 @@ exports.handler = async (event) => {
       message: "class info loaded successfully",
       data: {
         class_id: currentClass.class_id || null,
-        course_id: currentClass.course_id || null,
+        course_id: currentClass.course_id || currentClass.course_code || null,
         course_name: currentClass.course_name || null,
         section: currentClass.section || null,
         day: currentClass.day || null,
-        start_time: currentClass.start_time || null,
-        end_time: currentClass.end_time || null,
-        student_count: currentClass.student_count || 0
+        start_time: currentClass.start_time || currentClass.class_time?.split("-")[0]?.trim() || null,
+        end_time: currentClass.end_time || currentClass.class_time?.split("-")[1]?.trim() || null,
+        student_count: currentClass.student_count || currentClass.total_students || 0
       }
     });
 
