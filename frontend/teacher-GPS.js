@@ -122,31 +122,21 @@ function finishProcess() {
 }
 
 async function downloadQRCode() {
-    const qrImage = document.getElementById('final-qr');
+    const qrImage = document.getElementById('final-qr') || document.getElementById('qr-online');
     if (!qrImage || !qrImage.src) return;
 
-    // ถ้าใช้งานผ่าน LINE LIFF
-    if (typeof liff !== 'undefined' && liff.isInClient()) {
-        // วิธีที่ 1: เปิดรูปใน Browser พื้นฐานของเครื่อง เพื่อให้กดดาวน์โหลดได้ตามปกติ
+    if (liff.isInClient()) {
+        // แจ้งเตือนสั้นๆ แล้วเปิด Browser นอกเพื่อให้กดเซฟได้ชัวร์ๆ
+        alert("ระบบจะเปิดรูปภาพใน Browser กรุณากดค้างที่รูปเพื่อบันทึก");
         liff.openWindow({
             url: qrImage.src,
             external: true
         });
     } else {
-        // วิธีที่ 2: สำหรับ Browser ทั่วไป (Desktop) ใช้ Logic เดิม
-        try {
-            const response = await fetch(qrImage.src);
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `QRCode_Attendance.png`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-        } catch (e) {
-            alert("ไม่สามารถดาวน์โหลดได้ กรุณากดค้างที่รูปภาพเพื่อบันทึก");
-        }
+        // บนคอมพิวเตอร์ให้ดาวน์โหลดปกติ
+        const a = document.createElement('a');
+        a.href = qrImage.src;
+        a.download = 'QR_Attendance.png';
+        a.click();
     }
 }

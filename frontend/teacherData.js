@@ -178,22 +178,21 @@ function retryOnline() {
 
 // ==================== DOWNLOAD QR ====================
 async function downloadQRCode() {
-    const qrImage = document.getElementById('qr-online');
+    const qrImage = document.getElementById('final-qr') || document.getElementById('qr-online');
     if (!qrImage || !qrImage.src) return;
 
-    if (typeof liff !== 'undefined' && liff.isInClient()) {
+    if (liff.isInClient()) {
+        // แจ้งเตือนสั้นๆ แล้วเปิด Browser นอกเพื่อให้กดเซฟได้ชัวร์ๆ
+        alert("ระบบจะเปิดรูปภาพใน Browser กรุณากดค้างที่รูปเพื่อบันทึก");
         liff.openWindow({
             url: qrImage.src,
             external: true
         });
     } else {
-        // ... โค้ดดาวน์โหลดปกติสำหรับ Desktop ...
-        const response = await fetch(qrImage.src);
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
+        // บนคอมพิวเตอร์ให้ดาวน์โหลดปกติ
         const a = document.createElement('a');
-        a.href = url;
-        a.download = `QRCode_Online.png`;
+        a.href = qrImage.src;
+        a.download = 'QR_Attendance.png';
         a.click();
     }
 }
