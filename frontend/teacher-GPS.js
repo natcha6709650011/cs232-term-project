@@ -3,7 +3,13 @@ let myLon = null;
 let retryCount = 0;
 
 window.onload = function() {
-    requestGPS();
+    liff.init({ liffId: "2009731150-PW03jI3c" })
+        .then(() => {
+            console.log("LIFF Initialized");
+        })
+        .catch((err) => {
+            console.error("LIFF Initialization failed", err);
+        });
 };
 
 function requestGPS() {
