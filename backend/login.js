@@ -117,11 +117,16 @@ exports.handler = async (event) => {
     // map role
     // ถ้าเป็น employee ให้ถือเป็น teacher
     // ถ้าไม่ใช่ employee ให้ถือเป็น student
-    let role = "student";
+let role = "student";
+let userType = tuData.type || "student";
 
-    if (tuData.type === "employee") {
-      role = "employee";
-    }
+// DEMO: บังคับ account นี้ให้เป็นอาจารย์
+if (tuData.username === "6709650011") {
+  userType = "employee";
+  role = "employee";
+} else if (userType === "employee") {
+  role = "employee";
+}
 
     // เตรียม object user ที่จะเก็บลง DynamoDB
     const userItem = {
@@ -135,7 +140,7 @@ exports.handler = async (event) => {
       role,
 
       // ข้อมูลที่ดึงได้จาก TU API
-      type: tuData.type || null,
+      type: userType || null,
       name_th: tuData.displayname_th || null,
       name_en: tuData.displayname_en || null,
       email: tuData.email || null,
