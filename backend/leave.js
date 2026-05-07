@@ -1,30 +1,56 @@
 const { response, getBody, dynamodb } = require("./common");
+const { v4: uuidv4 } = require("uuid");
 
 const USERS_TABLE = process.env.USERS_TABLE || "Users";
 const SESSIONS_TABLE = process.env.SESSIONS_TABLE || "Sessions";
 const ATTENDANCE_TABLE = process.env.ATTENDANCE_TABLE || "Attendance";
+const LEAVE_TABLE = process.env.LEAVE_TABLE || "Leave";
+
+function normalizeLeaveType(type) {
+  if (!type) return "ลากิจ";
+  const value = String(type).trim();
+  if (["sick", "ลาป่วย"].includes(value)) return "ลาป่วย";
+  if (["personal", "ลากิจ"].includes(value)) return "ลากิจ";
+  return value;
+}
 
 exports.handler = async (event) => {
   try {
-    // อ่านข้อมูลจาก request
+    if (event.httpMethod === "OPTIONS") {
+      return response(200, { success: true });
+    }
+
     const body = getBody(event);
 
     const {
-      line_user_id,   // line user id ของนักศึกษา
-      session_id,     // id ของ session ที่จะลา
-      reason,         // เหตุผลการลา
-      attachment_url  // รูปภาพหรือเอกสารประกอบการลา (ถ้ามี)
+      line_user_id,
+      session_id,
+      class_id,
+      course_id,
+      course_name,
+      section,
+      leave_date,
+      type,
+      reason,
+      note,
+      attachment_url,
+      attachment_name
     } = body;
 
-    // เช็คข้อมูลพื้นฐาน
-    if (!line_user_id || !session_id || !reason) {
+    if (!line_user_id || !leave_date || !reason) {
       return response(400, {
         success: false,
-        message: "missing line_user_id, session_id or reason"
+        message: "missing line_user_id, leave_date or reason"
       });
     }
 
-    // ดึง user จาก Users table
+    if (!session_id && !class_id) {
+      return response(400, {
+        success: false,
+        message: "missing class_id or session_id"
+      });
+    }
+
     const userResult = await dynamodb.get({
       TableName: USERS_TABLE,
       Key: { line_user_id }
@@ -32,7 +58,6 @@ exports.handler = async (event) => {
 
     const user = userResult.Item;
 
-    // ไม่เจอ user
     if (!user) {
       return response(404, {
         success: false,
@@ -40,7 +65,6 @@ exports.handler = async (event) => {
       });
     }
 
-    // ต้องเป็น student เท่านั้น
     if (user.role !== "student") {
       return response(403, {
         success: false,
@@ -48,108 +72,111 @@ exports.handler = async (event) => {
       });
     }
 
-    // ดึง session จาก Sessions table
-    const sessionResult = await dynamodb.get({
-      TableName: SESSIONS_TABLE,
-      Key: { session_id }
-    }).promise();
+    let session = null;
 
-    const session = sessionResult.Item;
+    // session_id เป็น optional แล้ว: ใช้เฉพาะกรณีอาจารย์เปิดคลาสอยู่
+    if (session_id) {
+      const sessionResult = await dynamodb.get({
+        TableName: SESSIONS_TABLE,
+        Key: { session_id }
+      }).promise();
 
-    // ไม่เจอ session
-    if (!session) {
-      return response(404, {
-        success: false,
-        message: "session not found"
-      });
-    }
+      session = sessionResult.Item || null;
 
-    // ถ้าคลาสถูกยกเลิกไม่ต้องลา
-    if (session.status === "cancelled") {
-      return response(400, {
-        success: false,
-        message: "class is cancelled"
-      });
-    }
-
-    // ถ้า session ไม่ active ก็ลาไม่ได้
-    if (session.status !== "active") {
-      return response(400, {
-        success: false,
-        message: "session is not active"
-      });
-    }
-
-    // ถ้า session หมดเวลาแล้วก็ลาไม่ได้
-    if (Date.now() > session.expire_at) {
-      return response(400, {
-        success: false,
-        message: "session has expired"
-      });
-    }
-
-    // กันส่งซ้ำ
-    const existingAttendance = await dynamodb.get({
-      TableName: ATTENDANCE_TABLE,
-      Key: {
-        session_id,
-        line_user_id
+      if (!session) {
+        return response(404, {
+          success: false,
+          message: "session not found"
+        });
       }
-    }).promise();
 
-    if (existingAttendance.Item) {
-      return response(409, {
-        success: false,
-        message: "attendance record already exists"
-      });
+      if (session.status === "cancelled") {
+        return response(400, {
+          success: false,
+          message: "class is cancelled"
+        });
+      }
     }
 
-    // เตรียมข้อมูลการลา
-    const leaveItem = {
-      session_id,
-      line_user_id,
+    const leaveType = normalizeLeaveType(type);
+    const now = Date.now();
+    const leave_id = uuidv4();
 
-      // ข้อมูลนักศึกษา
+    const leaveItem = {
+      leave_id,
+      line_user_id,
+      session_id: session_id || null,
+
       student_username: user.username || null,
       student_name: user.name_th || user.name_en || user.username || null,
       student_email: user.email || null,
 
-      // ข้อมูลคาบ
-      class_id: session.class_id || null,
-      course_id: session.course_id || null,
-      course_name: session.course_name || null,
-      section: session.section || null,
+      class_id: class_id || session?.class_id || null,
+      course_id: course_id || session?.course_id || null,
+      course_name: course_name || session?.course_name || null,
+      section: section || session?.section || null,
 
-      // สถานะ
-      status: "leave",
-
-      // รายละเอียดการลา
+      leave_date,
+      leave_type: leaveType,
+      status: "pending",
       reason,
+      note: note || null,
       attachment_url: attachment_url || null,
-
-      // เวลาที่ส่งลา
-      leave_time: Date.now()
+      attachment_name: attachment_name || null,
+      created_at: now,
+      updated_at: now
     };
 
-    // บันทึกการลาใน Attendance table
+    // บันทึกคำขอลงตาราง Leave เสมอ เพื่อให้อาจารย์มาอนุมัติ/ดูหลักฐานภายหลังได้
     await dynamodb.put({
-      TableName: ATTENDANCE_TABLE,
+      TableName: LEAVE_TABLE,
       Item: leaveItem
     }).promise();
 
-    // ส่งผลกลับ frontend
+    // ถ้ามี session_id ให้ลง Attendance เป็น leave ด้วย เพื่อให้หน้าสรุปคาบนั้นนับจำนวนลาได้ทันที
+    if (session_id) {
+      const existingAttendance = await dynamodb.get({
+        TableName: ATTENDANCE_TABLE,
+        Key: { session_id, line_user_id }
+      }).promise();
+
+      if (!existingAttendance.Item) {
+        await dynamodb.put({
+          TableName: ATTENDANCE_TABLE,
+          Item: {
+            session_id,
+            line_user_id,
+            leave_id,
+            student_username: leaveItem.student_username,
+            student_name: leaveItem.student_name,
+            student_email: leaveItem.student_email,
+            class_id: leaveItem.class_id,
+            course_id: leaveItem.course_id,
+            course_name: leaveItem.course_name,
+            section: leaveItem.section,
+            status: "leave",
+            leave_type: leaveType,
+            reason,
+            attachment_url: attachment_url || null,
+            leave_time: now,
+            checkin_time: now
+          }
+        }).promise();
+      }
+    }
+
     return response(200, {
       success: true,
       message: "leave submitted successfully",
       data: leaveItem
     });
-
   } catch (err) {
     console.error("LEAVE ERROR:", err);
 
     return response(500, {
       success: false,
-      message: "internal server error"
+      message: "internal server error",
+      error: err.message
     });
   }
 };
