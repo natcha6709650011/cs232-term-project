@@ -14,6 +14,25 @@ function normalizeLeaveType(type) {
   return value;
 }
 
+async function getLatestActiveSession() {
+  const result = await dynamodb.scan({
+    TableName: SESSIONS_TABLE,
+    FilterExpression: "#status = :active",
+    ExpressionAttributeNames: {
+      "#status": "status"
+    },
+    ExpressionAttributeValues: {
+      ":active": "active"
+    }
+  }).promise();
+
+  const activeSessions = (result.Items || [])
+    .filter((s) => !s.expire_at || Date.now() <= s.expire_at)
+    .sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+
+  return activeSessions[0] || null;
+}
+
 exports.handler = async (event) => {
   try {
     if (event.httpMethod === "OPTIONS") {
@@ -73,12 +92,24 @@ exports.handler = async (event) => {
     }
 
     let session = null;
+    let finalSessionId = session_id || null;
+
+    if (!finalSessionId) {
+      const activeSession = await getLatestActiveSession();
+    
+      if (activeSession) {
+        session = activeSession;
+        finalSessionId = activeSession.session_id;
+      }
+    }
+    
+
 
     // session_id เป็น optional แล้ว: ใช้เฉพาะกรณีอาจารย์เปิดคลาสอยู่
-    if (session_id) {
+    if (finalSessionId && !session) {
       const sessionResult = await dynamodb.get({
         TableName: SESSIONS_TABLE,
-        Key: { session_id }
+        Key: { session_id: finalSessionId }
       }).promise();
 
       session = sessionResult.Item || null;
@@ -105,7 +136,7 @@ exports.handler = async (event) => {
     const leaveItem = {
       leave_id,
       line_user_id,
-      session_id: session_id || null,
+      session_id: finalSessionId || null,
 
       student_username: user.username || null,
       student_name: user.name_th || user.name_en || user.username || null,
@@ -134,35 +165,34 @@ exports.handler = async (event) => {
     }).promise();
 
     // ถ้ามี session_id ให้ลง Attendance เป็น leave ด้วย เพื่อให้หน้าสรุปคาบนั้นนับจำนวนลาได้ทันที
-    if (session_id) {
+    if (finalSessionId) {
       const existingAttendance = await dynamodb.get({
         TableName: ATTENDANCE_TABLE,
-        Key: { session_id, line_user_id }
+        Key: { session_id: finalSessionId, line_user_id }
       }).promise();
 
-      if (!existingAttendance.Item) {
-        await dynamodb.put({
-          TableName: ATTENDANCE_TABLE,
-          Item: {
-            session_id,
-            line_user_id,
-            leave_id,
-            student_username: leaveItem.student_username,
-            student_name: leaveItem.student_name,
-            student_email: leaveItem.student_email,
-            class_id: leaveItem.class_id,
-            course_id: leaveItem.course_id,
-            course_name: leaveItem.course_name,
-            section: leaveItem.section,
-            status: "leave",
-            leave_type: leaveType,
-            reason,
-            attachment_url: attachment_url || null,
-            leave_time: now,
-            checkin_time: now
-          }
-        }).promise();
-      }
+      await dynamodb.put({
+        TableName: ATTENDANCE_TABLE,
+        Item: {
+          ...(existingAttendance.Item || {}),
+          session_id: finalSessionId,
+          line_user_id,
+          leave_id,
+          student_username: leaveItem.student_username,
+          student_name: leaveItem.student_name,
+          student_email: leaveItem.student_email,
+          class_id: leaveItem.class_id,
+          course_id: leaveItem.course_id,
+          course_name: leaveItem.course_name,
+          section: leaveItem.section,
+          status: "leave",
+          leave_type: leaveType,
+          reason,
+          attachment_url: attachment_url || null,
+          leave_time: now,
+          checkin_time: existingAttendance.Item?.checkin_time || now
+        }
+      }).promise();
     }
 
     return response(200, {
