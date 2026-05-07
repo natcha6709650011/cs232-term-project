@@ -175,16 +175,23 @@ function retryOnline() {
 // ==================== DOWNLOAD QR ====================
 async function downloadQRCode() {
     const qrImage = document.getElementById('qr-online');
-    if (!qrImage?.src) return;
-    try {
+    if (!qrImage || !qrImage.src) return;
+
+    if (typeof liff !== 'undefined' && liff.isInClient()) {
+        liff.openWindow({
+            url: qrImage.src,
+            external: true
+        });
+    } else {
+        // ... โค้ดดาวน์โหลดปกติสำหรับ Desktop ...
         const response = await fetch(qrImage.src);
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `QRCode_${currentClassId}.png`;
+        a.download = `QRCode_Online.png`;
         a.click();
-    } catch (e) { alert("ดาวน์โหลดล้มเหลว"); }
+    }
 }
 
 // ==================== UTILS ====================
