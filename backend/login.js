@@ -120,8 +120,14 @@ exports.handler = async (event) => {
 let role = "student";
 let userType = tuData.type || "student";
 
-// DEMO: บังคับ account นี้ให้เป็นอาจารย์
-if (tuData.username === "6709650011") {
+// DEMO: บังคับ account กลุ่มนี้ให้เป็นอาจารย์
+const DEMO_TEACHER_USERNAMES = [
+  "6709650011",
+  "6709650029",
+  "6709650250"
+];
+
+if (DEMO_TEACHER_USERNAMES.includes(tuData.username)) {
   userType = "employee";
   role = "employee";
 } else if (userType === "employee") {
