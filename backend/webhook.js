@@ -17,6 +17,10 @@ const BUCKET_NAME =
 
 const LEAVE_TABLE = process.env.LEAVE_TABLE || "Leave";
 
+// DEMO locked sessions: use these instead of newly generated sessions
+const DEMO_SESSION_IDS = ["ONLINE650001", "YSqk16"];
+
+
 function generateViewUrl(filePath) {
   if (!filePath) return null;
 
@@ -68,12 +72,49 @@ async function getLatestActiveSession() {
   return activeSessions[0] || null;
 }
 
+async function getSessionById(session_id) {
+  if (!session_id) return null;
+
+  try {
+    const result = await dynamodb.get({
+      TableName: SESSIONS_TABLE,
+      Key: { session_id }
+    }).promise();
+
+    return result.Item || null;
+  } catch (err) {
+    console.error("GET SESSION BY ID ERROR:", err);
+    return null;
+  }
+}
+
 async function getAttendance(session_id, line_user_id) {
   const result = await dynamodb.get({
     TableName: ATTENDANCE_TABLE,
     Key: { session_id, line_user_id }
   }).promise();
   return result.Item || null;
+}
+
+async function getAttendanceFromDemoSessions(line_user_id) {
+  const items = [];
+
+  for (const session_id of DEMO_SESSION_IDS) {
+    const attendance = await getAttendance(session_id, line_user_id);
+    if (attendance) {
+      items.push(attendance);
+    }
+  }
+
+  if (items.length === 0) return null;
+
+  items.sort((a, b) => {
+    const aTime = Number(a.checkin_time || a.leave_time || a.created_at || 0);
+    const bTime = Number(b.checkin_time || b.leave_time || b.created_at || 0);
+    return bTime - aTime;
+  });
+
+  return items[0];
 }
 
 async function getLatestLeaveAttendanceByUser(line_user_id, session_id) {
@@ -143,10 +184,36 @@ exports.handler = async (event) => {
 
         if (!isCheckStatus) return;
 
-        const activeSession = await getLatestActiveSession();
+        let activeSession = await getLatestActiveSession();
 
         console.log("WEBHOOK userId:", userId);
         console.log("WEBHOOK activeSession:", activeSession);
+
+        // First check the currently active session, then the two locked demo sessions.
+        // This fixes the case where online check-in is saved under ONLINE650001
+        // but active-session / a newer generated session points somewhere else.
+        let attendance = activeSession
+          ? await getAttendance(activeSession.session_id, userId)
+          : null;
+
+        console.log("WEBHOOK attendance from active session:", attendance);
+
+        if (!attendance) {
+          attendance = await getAttendanceFromDemoSessions(userId);
+        }
+
+        // If attendance is found in ONLINE650001 or YSqk16, use that session for display.
+        if (attendance?.session_id) {
+          const attendanceSession = await getSessionById(attendance.session_id);
+          if (attendanceSession) {
+            activeSession = attendanceSession;
+          }
+        }
+
+        // If no active session exists, still fall back to ONLINE650001 for display during demo.
+        if (!activeSession) {
+          activeSession = await getSessionById("ONLINE650001") || await getSessionById("YSqk16");
+        }
 
         if (!activeSession) {
           return client.replyMessage(replyToken, {
@@ -155,35 +222,30 @@ exports.handler = async (event) => {
           });
         }
 
-        let attendance = await getAttendance(activeSession.session_id, userId);
+        console.log("WEBHOOK attendance before leave fallback:", attendance);
 
-        console.log("WEBHOOK attendance before fallback:", attendance);
-
-        // ถ้าหา Attendance ใน session ปัจจุบันไม่เจอ
-        // ให้ลองหา leave ล่าสุดของ user จาก Attendance table
+        // ถ้าหา Attendance ไม่เจอ ให้ลองหา leave ล่าสุดของ user จาก Attendance table
         if (!attendance) {
           const latestLeaveAttendance = await getLatestLeaveAttendanceByUser(userId, activeSession.session_id);
 
-          // ถ้ามี leave ล่าสุด และเป็น class/section เดียวกับ session ปัจจุบัน ให้ใช้เป็นสถานะ
           if (
             latestLeaveAttendance &&
             (
               latestLeaveAttendance.session_id === activeSession.session_id ||
               latestLeaveAttendance.class_id === activeSession.class_id ||
-              latestLeaveAttendance.section === activeSession.section
+              latestLeaveAttendance.section === activeSession.section ||
+              DEMO_SESSION_IDS.includes(latestLeaveAttendance.session_id)
             )
           ) {
             attendance = latestLeaveAttendance;
+          }
+        }
 
-            // ถ้า attendance ที่ได้มีมี leave_id → ดึงข้อมูลครบจาก Leave table
-            // เพราะ Leave table มี attachment_url, attachment_name ครบกว่า
-            if (attendance.leave_id) {
-              const leaveRecord = await getLeaveRecord(attendance.leave_id);
-              if (leaveRecord) {
-                // merge ข้อมูลจาก Leave เข้า attendance (Leave table มีข้อมูลครบกว่า)
-                attendance = { ...attendance, ...leaveRecord };
-              }
-            }
+        // ถ้า attendance ที่ได้มี leave_id → ดึงข้อมูลครบจาก Leave table
+        if (attendance?.leave_id) {
+          const leaveRecord = await getLeaveRecord(attendance.leave_id);
+          if (leaveRecord) {
+            attendance = { ...attendance, ...leaveRecord };
           }
         }
 
@@ -194,8 +256,8 @@ exports.handler = async (event) => {
             type: "text",
             text:
               `📊 สถานะของฉัน\n` +
-              `วิชา: ${activeSession.course_name || activeSession.course_id || "-"}\n` +
-              `Section: ${activeSession.section || "-"}\n` +
+              `วิชา: ${activeSession.course_name || activeSession.course_id || "CS232 INTRODUCTION TO CLOUD COMPUTING TECHNOLOGY"}\n` +
+              `Section: ${activeSession.section || "650001"}\n` +
               `สถานะ: ⏳ ยังไม่เช็คชื่อ\n` +
               `หมายเหตุ: หากกดเช็คชื่อแล้วแต่ยังไม่ขึ้น ให้ลองกดใหม่หรือแจ้งอาจารย์`
           });

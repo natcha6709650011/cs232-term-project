@@ -1,6 +1,9 @@
 // ==================== CONFIG ====================
 const API_BASE_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com";
 const LIFF_ID = "2009731150-FBugBxC4";
+const FRONTEND_BASE_URL = "https://main.d1d25usb5e0o4s.amplifyapp.com/frontend";
+const ONLINE_SESSION_ID = "ONLINE650001";
+
 
 // DEV_MODE = true  → ข้าม LIFF login (ใช้ตอน dev/test ใน browser)
 // DEV_MODE = false → ใช้ LIFF จริง (ใช้ตอน deploy บน LINE)
@@ -88,55 +91,33 @@ function startOnsite() {
     window.location.href = `teacher-GPS.html?${params.toString()}`;
 }
 
-// ปุ่มออนไลน์ → เรียก API start-session แบบ online โดยตรง
-async function startOnline() {
-    const lineUserId = activeLineUserId || localStorage.getItem("line_user_id") || "";
-    if (!lineUserId) { alert("ยังไม่พบ line_user_id"); return; }
-
-    const payload = {
-        line_user_id: lineUserId,
-        class_id: currentClassId,
-        type: "online"
-    };
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/start-session`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const result = await response.json();
-
-        if (result.success) {
-            onlineRetryCount = 0;
-            showOnlineQR(result);
-        } else {
-            showOnlineError(result.message || "ผิดพลาด");
-        }
-    } catch (error) {
-        showOnlineError("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้");
-    }
+// ปุ่มออนไลน์ → ใช้ session เดิมเท่านั้น ไม่ยิง /start-session
+function startOnline() {
+    onlineRetryCount = 0;
+    showOnlineQR();
 }
 
 // ==================== QR CODE (ออนไลน์) ====================
-function showOnlineQR(result) {
-    // หยอดข้อมูลในหน้า QR
-    const courseId = document.getElementById('course-id').innerText;
-    const section  = document.getElementById('section').innerText;
-    const time     = document.getElementById('time-range').innerText;
+function showOnlineQR() {
+    const courseId = document.getElementById('course-id').innerText || "CS232";
+    const section  = document.getElementById('section').innerText || "650001";
+    const time     = document.getElementById('time-range').innerText || "09.30 - 12.30";
 
     document.getElementById('qr-course-id').innerText = courseId;
     document.getElementById('qr-section').innerText   = section;
     document.getElementById('qr-time').innerText      = `เวลา ${time}`;
 
-    // สร้าง QR จาก checkin_url ที่ Backend ส่งมา (หรือ fallback)
+    // Online ใช้ session_id เดิมตลอด ห้ามสร้างใหม่
     const checkinUrl =
-    result?.data?.checkin_link ||
-    result?.checkin_url ||
-    result?.data?.checkin_url ||
-    `https://liff.line.me/${LIFF_ID}?session_id=${result?.data?.session_id || ""}`;
-    document.getElementById('qr-online').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(checkinUrl)}`;
+        `${FRONTEND_BASE_URL}/checkin.html?session_id=${encodeURIComponent(ONLINE_SESSION_ID)}&type=online`;
 
+    document.getElementById('qr-online').src =
+        `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(checkinUrl)}`;
+
+    localStorage.setItem("session_id", ONLINE_SESSION_ID);
+    localStorage.setItem("session_type", "online");
+
+    console.log("ONLINE CHECKIN LINK:", checkinUrl);
     showView('view-qr');
 }
 

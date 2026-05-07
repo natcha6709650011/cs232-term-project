@@ -150,6 +150,24 @@ function startOnline() {
   startOnlineSession();
 }
 
+// กันกรณี HTML เดิมเรียกชื่อ function เก่า: ห้ามยิง /start-session ให้ใช้ session เดิมเท่านั้น
+function startSession(type) {
+  if (type === "online") {
+    startOnlineSession();
+    return;
+  }
+
+  submitStep2();
+}
+
+function createSession(type) {
+  startSession(type);
+}
+
+function startClass(type) {
+  startSession(type);
+}
+
 function showErrorPage(forceCount = null) {
   hideAllViews();
 
