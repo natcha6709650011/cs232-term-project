@@ -10,8 +10,14 @@ const ONSITE_SESSION_ID = "YSqk16";
 // Online ใช้ session ใหม่ใน DB
 const ONLINE_SESSION_ID = "ONLINE650001";
 
+// เพิ่มเข้าไปใน window.onload ของ teacher-GPS.js
 window.onload = function () {
   requestGPS();
+  
+  // เพิ่มการ Init LIFF แบบเงียบๆ เพื่อให้ใช้คำสั่ง openWindow ได้
+  if (window.liff) {
+      liff.init({ liffId: "2009731150-FBugBxC4" }).catch(err => console.error(err));
+  }
 };
 
 function requestGPS() {
@@ -236,23 +242,30 @@ function finishProcess() {
 }
 
 async function downloadQRCode() {
-  const qrImage = document.getElementById("final-qr");
+    // 1. หา Element รูปภาพ (ตรวจสอบทั้ง 2 ID เพื่อความชัวร์)
+    const qrImage = document.getElementById('final-qr') || document.getElementById('qr-online');
+    
+    if (!qrImage || !qrImage.src) {
+        alert("ไม่พบรูปภาพ QR Code");
+        return;
+    }
 
-  if (!qrImage || !qrImage.src) return;
-
-  try {
-    const response = await fetch(qrImage.src);
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "QRCode.png";
-    a.click();
-
-    window.URL.revokeObjectURL(url);
-  } catch (e) {
-    console.error("download QR error:", e);
-    alert("ดาวน์โหลดล้มเหลว");
-  }
+    // 2. ตรวจสอบว่าเปิดในแอป LINE หรือไม่
+    // ใช้ window.liff เพื่อป้องกัน Error หากไม่ได้ init
+    if (window.liff && liff.isInClient()) {
+        // แจ้งเตือน และเปิด URL ของรูปภาพใน Browser นอก (External Browser)
+        // เพื่อให้ระบบ iOS/Android สามารถกดค้างเพื่อบันทึกรูปได้
+        liff.openWindow({
+            url: qrImage.src,
+            external: true
+        });
+    } else {
+        // กรณีเปิดบนคอมพิวเตอร์ หรือ Browser ทั่วไป
+        const a = document.createElement('a');
+        a.href = qrImage.src;
+        a.download = 'QR_Attendance.png';
+        document.body.appendChild(a); // เพิ่มเข้า body ชั่วคราวเพื่อให้ click ทำงานในบาง browser
+        a.click();
+        document.body.removeChild(a);
+    }
 }
