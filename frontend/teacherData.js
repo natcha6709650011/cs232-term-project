@@ -4,7 +4,7 @@ const LIFF_ID = "2009731150-FBugBxC4";
 
 // DEV_MODE = true  → ข้าม LIFF login (ใช้ตอน dev/test ใน browser)
 // DEV_MODE = false → ใช้ LIFF จริง (ใช้ตอน deploy บน LINE)
-const DEV_MODE = true;
+const DEV_MODE = false;
 const DEV_MOCK_USER_ID = "U_dev_test_teacher"; // mock user id ตอน dev
 
 let currentClassId = "";
