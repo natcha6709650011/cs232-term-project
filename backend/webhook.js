@@ -6,6 +6,47 @@ const client = new line.Client({
   channelSecret: process.env.LINE_CHANNEL_SECRET
 });
 
+const ATTENDANCE_TABLE = process.env.ATTENDANCE_TABLE || "Attendance";
+const SESSIONS_TABLE = process.env.SESSIONS_TABLE || "Sessions";
+
+function formatTime(timestamp) {
+  if (!timestamp) return "-";
+  // บางไฟล์เก่าเก็บเป็นวินาที บางไฟล์เก็บเป็น milliseconds จึง normalize ให้ก่อน
+  const ms = timestamp < 100000000000 ? timestamp * 1000 : timestamp;
+  return new Date(ms).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" });
+}
+
+function isActiveSession(session) {
+  return session?.status === "active" && (!session.expire_at || Date.now() <= session.expire_at);
+}
+
+async function getLatestActiveSession() {
+  const result = await dynamodb.scan({
+    TableName: SESSIONS_TABLE,
+    FilterExpression: "#status = :active",
+    ExpressionAttributeNames: {
+      "#status": "status"
+    },
+    ExpressionAttributeValues: {
+      ":active": "active"
+    }
+  }).promise();
+
+  const activeSessions = (result.Items || [])
+    .filter(isActiveSession)
+    .sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+
+  return activeSessions[0] || null;
+}
+
+async function getAttendance(session_id, line_user_id) {
+  const result = await dynamodb.get({
+    TableName: ATTENDANCE_TABLE,
+    Key: { session_id, line_user_id }
+  }).promise();
+  return result.Item || null;
+}
+
 exports.handler = async (event) => {
   console.log("EVENT:", JSON.stringify(event));
 
@@ -24,71 +65,53 @@ exports.handler = async (event) => {
         const userId = e.source?.userId;
         const replyToken = e.replyToken;
 
-        if (!replyToken) return;
+        if (!replyToken || !userId) return;
 
         const isCheckStatus =
-          (e.type === "message" &&
-            e.message?.text === "สถานะของฉัน") ||
-          (e.type === "postback" &&
-            e.postback?.data?.includes("action=check_status"));
+          (e.type === "message" && e.message?.text === "สถานะของฉัน") ||
+          (e.type === "postback" && e.postback?.data?.includes("action=check_status"));
 
         if (!isCheckStatus) return;
 
-        console.log("CHECK STATUS FOR:", userId);
+        const activeSession = await getLatestActiveSession();
 
-        // =========================
-        // 🔥 STEP 1: ดึงล่าสุดจาก GSI
-        // =========================
-        const result = await dynamodb
-          .query({
-            TableName: "Attendance",
-            IndexName: "line_user_id-index",
-            KeyConditionExpression: "line_user_id = :uid",
-            ExpressionAttributeValues: {
-              ":uid": userId
-            },
-            ScanIndexForward: false, // ล่าสุดก่อน
-            Limit: 1
-          })
-          .promise();
-
-        const latest = result.Items?.[0];
-
-        if (!latest) {
+        if (!activeSession) {
           return client.replyMessage(replyToken, {
             type: "text",
-            text: "❌ ไม่พบข้อมูลการเช็คชื่อของคุณ"
+            text: "📌 ยังไม่มีการเริ่มคลาสในตอนนี้\nเมื่ออาจารย์เริ่มคาบแล้ว ระบบจะแสดงสถานะการเช็คชื่อของคุณได้"
           });
         }
 
-        // =========================
-        // 🔥 format status
-        // =========================
+        const attendance = await getAttendance(activeSession.session_id, userId);
+
+        if (!attendance) {
+          return client.replyMessage(replyToken, {
+            type: "text",
+            text:
+              `📊 สถานะของฉัน\n` +
+              `วิชา: ${activeSession.course_name || activeSession.course_id || "-"}\n` +
+              `Section: ${activeSession.section || "-"}\n` +
+              `สถานะ: ⏳ ยังไม่เช็คชื่อ\n` +
+              `หมายเหตุ: หากกดเช็คชื่อแล้วแต่ยังไม่ขึ้น ให้ลองกดใหม่หรือแจ้งอาจารย์`
+          });
+        }
+
         const statusMap = {
           present: "✅ มาเรียน",
+          late: "🟠 มาสาย",
           leave: "🟡 ลา",
           absent: "❌ ขาดเรียน"
         };
 
-        const statusText =
-          statusMap[latest.status] || "❓ ไม่ทราบสถานะ";
+        const statusText = statusMap[attendance.status] || "❓ ไม่ทราบสถานะ";
+        const time = formatTime(attendance.checkin_time || attendance.leave_time);
 
-        // =========================
-        // 🔥 format time
-        // =========================
-        const time = latest.checkin_time
-            ? new Date(latest.checkin_time * 1000)
-                .toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })
-            : "-";
-
-        // =========================
-        // 🔥 reply
-        // =========================
         return client.replyMessage(replyToken, {
           type: "text",
           text:
-            `📊 สถานะล่าสุด\n` +
-            `วิชา: ${latest.course_name || "-"}\n` +
+            `📊 สถานะของฉัน\n` +
+            `วิชา: ${attendance.course_name || activeSession.course_name || "-"}\n` +
+            `Section: ${attendance.section || activeSession.section || "-"}\n` +
             `สถานะ: ${statusText}\n` +
             `เวลา: ${time}`
         });
