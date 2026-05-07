@@ -2,38 +2,58 @@ let myLat = null;
 let myLon = null;
 let retryCount = 0;
 
+const FRONTEND_BASE_URL = "https://main.d1d25usb5e0o4s.amplifyapp.com/frontend";
+
+// Onsite ใช้ session เดิมใน DB
+const ONSITE_SESSION_ID = "YSqk16";
+
+// Online ใช้ session ใหม่ใน DB
+const ONLINE_SESSION_ID = "ONLINE650001";
+
 window.onload = function () {
   requestGPS();
 };
 
 function requestGPS() {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        myLat = pos.coords.latitude;
-        myLon = pos.coords.longitude;
+  if (!navigator.geolocation) {
+    alert("อุปกรณ์นี้ไม่รองรับการระบุตำแหน่ง");
+    return;
+  }
 
-        document.getElementById("display-coords").innerText =
-          `${myLat.toFixed(5)}, ${myLon.toFixed(5)}`;
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      myLat = pos.coords.latitude;
+      myLon = pos.coords.longitude;
 
-        document.getElementById("geo-text").innerText =
-          "พิกัดระบุเรียบร้อยแล้ว";
+      const displayCoords = document.getElementById("display-coords");
+      if (displayCoords) {
+        displayCoords.innerText = `${myLat.toFixed(5)}, ${myLon.toFixed(5)}`;
+      }
 
-        const btn = document.getElementById("btn-confirm-gps");
+      const geoText = document.getElementById("geo-text");
+      if (geoText) {
+        geoText.innerText = "พิกัดระบุเรียบร้อยแล้ว";
+      }
+
+      const btn = document.getElementById("btn-confirm-gps");
+      if (btn) {
         btn.disabled = false;
         btn.classList.remove("opacity-50", "cursor-not-allowed");
-      },
-      (err) => {
-        console.error("GPS error:", err);
-        document.getElementById("view-step-3-error").classList.remove("hidden");
-      },
-      {
-        enableHighAccuracy: false,
-        timeout: 7000,
-        maximumAge: 60000
       }
-    );
-  }
+    },
+    (err) => {
+      console.error("GPS error:", err);
+      const errorView = document.getElementById("view-step-3-error");
+      if (errorView) {
+        errorView.classList.remove("hidden");
+      }
+    },
+    {
+      enableHighAccuracy: false,
+      timeout: 7000,
+      maximumAge: 60000
+    }
+  );
 }
 
 function hideAllViews() {
@@ -46,10 +66,59 @@ function hideAllViews() {
 
   views.forEach((id) => {
     const el = document.getElementById(id);
-    if (el) el.classList.add("hidden");
+    if (el) {
+      el.classList.add("hidden");
+    }
   });
 }
 
+function showSessionQR(sessionId, sessionType) {
+  const checkinLink =
+    `${FRONTEND_BASE_URL}/checkin.html?session_id=${encodeURIComponent(sessionId)}&type=${encodeURIComponent(sessionType)}`;
+
+  const qrUrl =
+    `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(checkinLink)}`;
+
+  hideAllViews();
+
+  const qrView = document.getElementById("view-step-4");
+  if (qrView) {
+    qrView.classList.remove("hidden");
+  }
+
+  const courseId = document.getElementById("res-course-id");
+  if (courseId) {
+    courseId.innerText = "CS232";
+  }
+
+  const section = document.getElementById("res-section");
+  if (section) {
+    section.innerText = "650001";
+  }
+
+  const time = document.getElementById("res-time");
+  if (time) {
+    time.innerText = "เวลา 09.30-12.30";
+  }
+
+  const finalQr = document.getElementById("final-qr");
+  if (finalQr) {
+    finalQr.src = qrUrl;
+  }
+
+  localStorage.setItem("session_id", sessionId);
+  localStorage.setItem("session_type", sessionType);
+
+  console.log("SESSION TYPE:", sessionType);
+  console.log("SESSION ID:", sessionId);
+  console.log("CHECKIN LINK:", checkinLink);
+}
+
+/*
+  ปุ่ม Onsite / ยืนยันตำแหน่งอาจารย์
+  QR ปลายทาง: checkin.html?session_id=YSqk16&type=onsite
+  นักศึกษาสแกนแล้วต้องยืนยัน GPS ก่อนถ่ายรูป
+*/
 async function submitStep2() {
   const lat = Number(myLat);
   const lng = Number(myLon);
@@ -60,75 +129,49 @@ async function submitStep2() {
     return;
   }
 
-  try {
-    const payload = {
-      line_user_id: localStorage.getItem("line_user_id"),
-      type: "onsite",
+  showSessionQR(ONSITE_SESSION_ID, "onsite");
+}
 
-      latitude: lat,
-      longitude: lng,
-      teacher_latitude: lat,
-      teacher_longitude: lng,
+/*
+  ปุ่ม Online
+  QR ปลายทาง: checkin.html?session_id=ONLINE650001&type=online
+  นักศึกษาสแกนแล้วข้าม GPS ไปถ่ายรูปได้เลย
+*/
+function startOnlineSession() {
+  showSessionQR(ONLINE_SESSION_ID, "online");
+}
 
-      class_id: "CS232_SEC01",
-      course_id: "CS232",
-      course_name: "CS232 INTRODUCTION TO CLOUD COMPUTING TECHNOLOGY",
-      section: "650001",
-      start_time: "09.30",
-      end_time: "12.30",
-      student_count: 0
-    };
+// เผื่อ teacher-GPS.html เรียกชื่อ function เดิม
+function submitOnline() {
+  startOnlineSession();
+}
 
-    const response = await fetch(
-      "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com/start-session",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      }
-    );
-
-    const result = await response.json();
-
-    if (!response.ok || !result.success) {
-      throw new Error(result.message || "สร้าง session ไม่สำเร็จ");
-    }
-
-    const sessionId = result.data?.session_id || result.session_id;
-
-    const checkinLink =
-      result.data?.checkin_link ||
-      `https://main.d1d25usb5e0o4s.amplifyapp.com/frontend/checkin.html?session_id=${encodeURIComponent(sessionId)}`;
-
-    hideAllViews();
-    document.getElementById("view-step-4").classList.remove("hidden");
-
-    document.getElementById("res-course-id").innerText = "CS232";
-    document.getElementById("res-section").innerText = "650001";
-    document.getElementById("res-time").innerText = "เวลา 09.30-12.30";
-
-    document.getElementById("final-qr").src =
-      `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(checkinLink)}`;
-
-    localStorage.setItem("session_id", sessionId);
-
-    console.log("START ONSITE SESSION SUCCESS:", result);
-  } catch (error) {
-    console.error("start onsite session error:", error);
-    alert(error.message || "สร้าง session ไม่สำเร็จ");
-    showErrorPage();
-  }
+function startOnline() {
+  startOnlineSession();
 }
 
 function showErrorPage(forceCount = null) {
   hideAllViews();
-  document.getElementById("view-failed").classList.remove("hidden");
 
-  document.getElementById("error-course-id").innerText = "CS232";
-  document.getElementById("error-section").innerText = "Section 650001";
-  document.getElementById("error-time-display").innerText = "เวลา 09.30-12.30";
+  const failedView = document.getElementById("view-failed");
+  if (failedView) {
+    failedView.classList.remove("hidden");
+  }
+
+  const errorCourseId = document.getElementById("error-course-id");
+  if (errorCourseId) {
+    errorCourseId.innerText = "CS232";
+  }
+
+  const errorSection = document.getElementById("error-section");
+  if (errorSection) {
+    errorSection.innerText = "Section 650001";
+  }
+
+  const errorTime = document.getElementById("error-time-display");
+  if (errorTime) {
+    errorTime.innerText = "เวลา 09.30-12.30";
+  }
 
   if (forceCount !== null) {
     retryCount = forceCount;
@@ -138,6 +181,8 @@ function showErrorPage(forceCount = null) {
 
   const errorMsg = document.getElementById("error-msg");
   const btnRetry = document.getElementById("btn-retry");
+
+  if (!errorMsg || !btnRetry) return;
 
   if (retryCount >= 3) {
     errorMsg.innerText = "กรุณาติดต่อเจ้าหน้าที่";
@@ -160,20 +205,26 @@ function showStep(stepNum) {
   hideAllViews();
 
   if (stepNum === 4) {
-    document.getElementById("view-step-4").classList.remove("hidden");
-    document.getElementById("final-qr").src =
-      "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=TEST";
+    showSessionQR(ONSITE_SESSION_ID, "onsite");
   }
 }
 
 function handleRetry() {
   hideAllViews();
-  document.getElementById("view-step-2").classList.remove("hidden");
+
+  const step2 = document.getElementById("view-step-2");
+  if (step2) {
+    step2.classList.remove("hidden");
+  }
+
   requestGPS();
 }
 
 function closeError() {
-  document.getElementById("view-step-3-error").classList.add("hidden");
+  const errorView = document.getElementById("view-step-3-error");
+  if (errorView) {
+    errorView.classList.add("hidden");
+  }
 }
 
 function finishProcess() {
@@ -185,21 +236,23 @@ function finishProcess() {
 }
 
 async function downloadQRCode() {
-    const qrImage = document.getElementById('final-qr') || document.getElementById('qr-online');
-    if (!qrImage || !qrImage.src) return;
+  const qrImage = document.getElementById("final-qr");
 
-    if (liff.isInClient()) {
-        // แจ้งเตือนสั้นๆ แล้วเปิด Browser นอกเพื่อให้กดเซฟได้ชัวร์ๆ
-        alert("ระบบจะเปิดรูปภาพใน Browser กรุณากดค้างที่รูปเพื่อบันทึก");
-        liff.openWindow({
-            url: qrImage.src,
-            external: true
-        });
-    } else {
-        // บนคอมพิวเตอร์ให้ดาวน์โหลดปกติ
-        const a = document.createElement('a');
-        a.href = qrImage.src;
-        a.download = 'QR_Attendance.png';
-        a.click();
-    }
+  if (!qrImage || !qrImage.src) return;
+
+  try {
+    const response = await fetch(qrImage.src);
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "QRCode.png";
+    a.click();
+
+    window.URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error("download QR error:", e);
+    alert("ดาวน์โหลดล้มเหลว");
+  }
 }

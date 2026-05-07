@@ -56,12 +56,13 @@ const reviewCoordsText = document.getElementById("reviewCoordsText");
 const reviewDateText = document.getElementById("reviewDateText");
 
 const API_BASE_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com";
-const UPLOAD_API_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com/generate-upload-url?folder=attendance";
+const UPLOAD_API_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com/generate-upload-url";
 const LIFF_ID = "2009731150-xGXS0XX2";
 
 let currentLatitude = null;
 let currentLongitude = null;
 let currentSessionId = "";
+let currentSessionType = "onsite";
 
 let scannerStream = null;
 let scanIntervalId = null;
@@ -199,6 +200,20 @@ return trimmed;
 }
 }
 
+function parseSessionTypeFromText(rawValue) {
+if (!rawValue) return "onsite";
+
+const trimmed = rawValue.trim();
+
+try {
+const parsedUrl = new URL(trimmed);
+const typeFromUrl = parsedUrl.searchParams.get("type");
+return typeFromUrl === "online" ? "online" : "onsite";
+} catch (error) {
+return "onsite";
+}
+}
+
 function stopScanner() {
 if (scanIntervalId) {
 clearInterval(scanIntervalId);
@@ -230,11 +245,12 @@ html5QrCode = null;
 
 async function handleDetectedQr(rawValue) {
 const sessionId = parseSessionIdFromText(rawValue);
+const sessionType = parseSessionTypeFromText(rawValue);
 
 updateQrDebug({
 rawValue: rawValue || "-",
 parsedSessionId: sessionId || "-",
-status: sessionId ? "อ่าน QR สำเร็จ" : "อ่าน QR ได้ แต่ไม่พบ session_id"
+status: sessionId ? `อ่าน QR สำเร็จ (${sessionType})` : "อ่าน QR ได้ แต่ไม่พบ session_id"
 });
 
 if (!sessionId) {
@@ -243,13 +259,23 @@ return;
 }
 
 currentSessionId = sessionId;
+currentSessionType = sessionType;
 localStorage.setItem("session_id", currentSessionId);
+localStorage.setItem("session_type", currentSessionType);
 
 await stopHtml5QrScanner();
 stopScanner();
 
 scanStatus.textContent = "สแกน QR สำเร็จแล้ว";
 updateSessionBadge(`Session ID: ${currentSessionId}`);
+
+if (currentSessionType === "online") {
+  currentLatitude = null;
+  currentLongitude = null;
+  renderClassInfo();
+  showPage(classInfoPage);
+  return;
+}
 
 showPage(locationPage);
 loadCurrentLocation();
@@ -638,7 +664,9 @@ alert("ยังไม่ได้สแกน QR");
 return null;
 }
 
-if (currentLatitude === null || currentLongitude === null) {
+const sessionType = currentSessionType || localStorage.getItem("session_type") || "onsite";
+
+if (sessionType !== "online" && (currentLatitude === null || currentLongitude === null)) {
 alert("ยังไม่พบตำแหน่งปัจจุบัน");
 return null;
 }
@@ -647,18 +675,21 @@ return {
 line_user_id: studentData.lineUserId,
 session_id: currentSessionId,
 student_id: studentData.studentId,
-latitude: currentLatitude,
-longitude: currentLongitude,
+type: sessionType,
+latitude: sessionType === "online" ? null : currentLatitude,
+longitude: sessionType === "online" ? null : currentLongitude,
 image_url: imageUrl
 };
 }
 
 function resetCheckinToScanPage() {
   currentSessionId = "";
+  currentSessionType = "onsite";
   currentLatitude = null;
   currentLongitude = null;
 
   localStorage.removeItem("session_id");
+  localStorage.removeItem("session_type");
 
   stopHtml5QrScanner();
   stopScanner();
@@ -687,6 +718,7 @@ function goBackToLineMenu() {
   stopPhotoCamera();
 
   localStorage.removeItem("session_id");
+  localStorage.removeItem("session_type");
 
   if (typeof liff !== "undefined" && liff.isInClient && liff.isInClient()) {
     liff.closeWindow();
@@ -787,6 +819,7 @@ refreshLocationBtn.addEventListener("click", loadCurrentLocation);
 
 rescanBtn.addEventListener("click", () => {
 currentSessionId = "";
+currentSessionType = "onsite";
 updateSessionBadge("ยังไม่ได้สแกน QR", false);
 scanStatus.textContent = "กดปุ่มด้านล่างเพื่อเปิดกล้องและสแกน QR ของอาจารย์";
 updateQrDebug({
@@ -873,36 +906,40 @@ studentData.lineUserId = lineUserId;
 document.addEventListener("DOMContentLoaded", () => {
 const params = new URLSearchParams(window.location.search);
 const urlSessionId = params.get("session_id");
+const urlSessionType = params.get("type") === "online" ? "online" : "onsite";
 
-// ถ้าเปิดมาจาก QR/link ที่มี session_id ให้ไปยืนยันตำแหน่งได้เลย
 if (urlSessionId) {
 currentSessionId = urlSessionId;
+currentSessionType = urlSessionType;
 localStorage.setItem("session_id", currentSessionId);
+localStorage.setItem("session_type", currentSessionType);
 
 updateSessionBadge(`Session ID: ${currentSessionId}`);
 updateQrDebug({
-rawValue: `session_id จาก URL: ${urlSessionId}`,
+rawValue: `session_id จาก URL: ${urlSessionId}, type: ${currentSessionType}`,
 parsedSessionId: currentSessionId,
 status: "โหลด session_id จาก URL สำเร็จ"
 });
+
+if (currentSessionType === "online") {
+  currentLatitude = null;
+  currentLongitude = null;
+  renderClassInfo();
+  showPage(classInfoPage);
+  return;
+}
 
 showPage(locationPage);
 loadCurrentLocation();
 return;
 }
 
-// ถ้าเปิดจากเมนูเช็คอินปกติ ต้องเริ่มที่หน้า scan QR เสมอ
 currentSessionId = "";
+currentSessionType = "onsite";
+currentLatitude = null;
+currentLongitude = null;
 localStorage.removeItem("session_id");
-
-updateSessionBadge("ยังไม่ได้สแกน QR", false);
-scanStatus.textContent = "กดปุ่มด้านล่างเพื่อเปิดกล้องและสแกน QR ของอาจารย์";
-updateQrDebug({
-rawValue: "-",
-parsedSessionId: "-",
-status: "รอการสแกน",
-visible: true
-});
-
+localStorage.removeItem("session_type");
+setConfirmEnabled(false);
 showPage(scanPage);
 });
