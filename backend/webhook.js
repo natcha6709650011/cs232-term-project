@@ -15,6 +15,8 @@ const BUCKET_NAME =
   process.env.S3_BUCKET ||
   "tu-attendance-images-s3";
 
+const LEAVE_TABLE = process.env.LEAVE_TABLE || "Leave";
+
 function generateViewUrl(filePath) {
   if (!filePath) return null;
 
@@ -74,7 +76,7 @@ async function getAttendance(session_id, line_user_id) {
   return result.Item || null;
 }
 
-async function getLatestLeaveAttendanceByUser(line_user_id) {
+async function getLatestLeaveAttendanceByUser(line_user_id, session_id) {
   const result = await dynamodb.scan({
     TableName: ATTENDANCE_TABLE,
     FilterExpression: "line_user_id = :uid AND #status = :leave",
@@ -90,7 +92,29 @@ async function getLatestLeaveAttendanceByUser(line_user_id) {
   const leaveItems = (result.Items || [])
     .sort((a, b) => (b.leave_time || b.checkin_time || 0) - (a.leave_time || a.checkin_time || 0));
 
+  // ถ้ามี session_id ให้กรองเฉพาะ session ปัจจุบันก่อน
+  if (session_id) {
+    const exact = leaveItems.find(item => item.session_id === session_id);
+    if (exact) return exact;
+  }
+
   return leaveItems[0] || null;
+}
+
+// ดึงข้อมูลการลาครบถ้วนจาก Leave table โดยใช้ leave_id
+// leave.js เขียน leave_id ไว้ใน Attendance.Item ด้วย
+async function getLeaveRecord(leave_id) {
+  if (!leave_id) return null;
+  try {
+    const result = await dynamodb.get({
+      TableName: LEAVE_TABLE,
+      Key: { leave_id }
+    }).promise();
+    return result.Item || null;
+  } catch (err) {
+    console.error("GET LEAVE RECORD ERROR:", err);
+    return null;
+  }
 }
 
 exports.handler = async (event) => {
@@ -138,7 +162,7 @@ exports.handler = async (event) => {
         // ถ้าหา Attendance ใน session ปัจจุบันไม่เจอ
         // ให้ลองหา leave ล่าสุดของ user จาก Attendance table
         if (!attendance) {
-          const latestLeaveAttendance = await getLatestLeaveAttendanceByUser(userId);
+          const latestLeaveAttendance = await getLatestLeaveAttendanceByUser(userId, activeSession.session_id);
 
           // ถ้ามี leave ล่าสุด และเป็น class/section เดียวกับ session ปัจจุบัน ให้ใช้เป็นสถานะ
           if (
@@ -150,6 +174,16 @@ exports.handler = async (event) => {
             )
           ) {
             attendance = latestLeaveAttendance;
+
+            // ถ้า attendance ที่ได้มีมี leave_id → ดึงข้อมูลครบจาก Leave table
+            // เพราะ Leave table มี attachment_url, attachment_name ครบกว่า
+            if (attendance.leave_id) {
+              const leaveRecord = await getLeaveRecord(attendance.leave_id);
+              if (leaveRecord) {
+                // merge ข้อมูลจาก Leave เข้า attendance (Leave table มีข้อมูลครบกว่า)
+                attendance = { ...attendance, ...leaveRecord };
+              }
+            }
           }
         }
 
