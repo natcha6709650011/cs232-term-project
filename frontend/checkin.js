@@ -874,8 +874,10 @@ document.addEventListener("DOMContentLoaded", () => {
 const params = new URLSearchParams(window.location.search);
 const urlSessionId = params.get("session_id");
 
+// ถ้าเปิดมาจาก QR/link ที่มี session_id ให้ไปยืนยันตำแหน่งได้เลย
 if (urlSessionId) {
 currentSessionId = urlSessionId;
+localStorage.setItem("session_id", currentSessionId);
 
 updateSessionBadge(`Session ID: ${currentSessionId}`);
 updateQrDebug({
@@ -885,7 +887,22 @@ status: "โหลด session_id จาก URL สำเร็จ"
 });
 
 showPage(locationPage);
-
 loadCurrentLocation();
+return;
 }
+
+// ถ้าเปิดจากเมนูเช็คอินปกติ ต้องเริ่มที่หน้า scan QR เสมอ
+currentSessionId = "";
+localStorage.removeItem("session_id");
+
+updateSessionBadge("ยังไม่ได้สแกน QR", false);
+scanStatus.textContent = "กดปุ่มด้านล่างเพื่อเปิดกล้องและสแกน QR ของอาจารย์";
+updateQrDebug({
+rawValue: "-",
+parsedSessionId: "-",
+status: "รอการสแกน",
+visible: true
+});
+
+showPage(scanPage);
 });
