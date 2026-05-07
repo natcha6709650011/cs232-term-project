@@ -83,9 +83,36 @@ function closeOverlay(target) {
 }
 
 function saveLoginResult(profile, role) {
+ 
+  const userType = profile.type || profile.role;
+  if (userType === "employee") {
+    role = "employee";
+  }
+ 
   localStorage.setItem("line_user_id", profile.line_user_id);
   localStorage.setItem("user_role", role);
+
+  // --- Demo teacher role ---
+const DEMO_TEACHER_LINE_ID = "U1bd557b9f84be826efc2670b3ff47401";
+
+if (profile.line_user_id === DEMO_TEACHER_LINE_ID) {
+  profile.role = "employee";
+  profile.type = "employee";
+
   localStorage.setItem("user_profile", JSON.stringify(profile));
+  localStorage.setItem("user_role", "employee");
+  localStorage.setItem("role", "employee");
+  localStorage.setItem("type", "employee");
+
+  window.location.href = "teacher-dashboard.html";
+  return; 
+}
+// --------------------------------------------------------
+
+  localStorage.setItem("user_profile", JSON.stringify(profile));
+  localStorage.setItem("user_role", role);
+  localStorage.setItem("role", role);
+  localStorage.setItem("type", profile.type || role);
 
   // ADDED: เก็บ profile LINE เบื้องต้นไว้ เผื่อหน้าอื่นต้องใช้ต่อ
   if (typeof liff !== "undefined" && liff.isLoggedIn()) {
@@ -106,16 +133,11 @@ function goToNextPage() {
   }
 
   // 2. ถ้าไม่ได้เปิดใน LINE (เช่น เทสใน Chrome บนคอมพิวเตอร์) ให้ทำงานตามปกติ
-  if (pendingRole === "teacher") {
+  if (pendingRole === "teacher" || pendingRole === "employee" || type === "employee") {
     window.location.href = "teacher-dashboard.html";
-    return;
+  }else{
+    window.location.href = "student-dashboard.html";
   }
-
-  if (pendingRole === "student") {
-    window.location.href = "checkin.html";
-    return;
-  }
-
   failMessage.textContent = "ไม่พบสิทธิ์ผู้ใช้งาน";
   openOverlay(failOverlay);
 }

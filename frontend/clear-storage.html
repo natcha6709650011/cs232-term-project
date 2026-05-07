@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>Clear Storage</title>
+</head>
+<body>
+  <p>กำลังล้างข้อมูลเดิม...</p>
+
+  <script>
+    localStorage.clear();
+    sessionStorage.clear();
+
+    alert("ล้างข้อมูลเดิมแล้ว กรุณาเข้าสู่ระบบใหม่");
+    window.location.href = "login.html";
+  </script>
+</body>
+</html>
