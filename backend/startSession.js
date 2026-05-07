@@ -18,6 +18,7 @@ const USERS_TABLE = process.env.USERS_TABLE || "Users";
 const SESSIONS_TABLE = process.env.SESSIONS_TABLE || "Sessions";
 
 const ROSTER_TABLE = process.env.ROSTER_TABLE || "ClassRoster";
+const CLASSES_TABLE = process.env.CLASSES_TABLE || "Classes";
 
 // Lambda handler หลักของไฟล์ startSession
 exports.handler = async (event) => {
@@ -120,6 +121,20 @@ exports.handler = async (event) => {
     // ใช้ line_user_id เป็น teacher_id
     const teacher_id = line_user_id;
 
+    // ถ้า frontend ส่งมาแค่ class_id ให้ดึงรายละเอียดวิชาจาก Classes table มาเติมให้ session
+    let classInfo = null;
+    if (class_id) {
+      try {
+        const classResult = await dynamodb.get({
+          TableName: CLASSES_TABLE,
+          Key: { class_id }
+        }).promise();
+        classInfo = classResult.Item || null;
+      } catch (err) {
+        console.error("Error fetching class info:", err);
+      }
+    }
+
     // สร้าง session_id ใหม่แบบ unique
     const session_id = uuidv4();
 
@@ -146,12 +161,12 @@ exports.handler = async (event) => {
       // ข้อมูลคลาส/วิชา
       // ถ้า frontend ยังไม่ส่งมา ให้ใส่ค่า default เพื่อให้ระบบไม่พัง
       class_id: class_id || "mock-class",
-      course_id: course_id || null,
-      course_name: course_name || null,
-      section: section || null,
-      start_time: start_time || null,
-      end_time: end_time || null,
-      student_count: student_count || 0,
+      course_id: course_id || classInfo?.course_id || null,
+      course_name: course_name || classInfo?.course_name || null,
+      section: section || classInfo?.section || null,
+      start_time: start_time || classInfo?.start_time || null,
+      end_time: end_time || classInfo?.end_time || null,
+      student_count: student_count || classInfo?.student_count || 0,
 
       // ข้อมูล session
       type,

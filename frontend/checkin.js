@@ -56,7 +56,7 @@ const reviewCoordsText = document.getElementById("reviewCoordsText");
 const reviewDateText = document.getElementById("reviewDateText");
 
 const API_BASE_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com";
-const UPLOAD_API_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com/generate-upload-url";
+const UPLOAD_API_URL = "https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com/generate-upload-url?folder=attendance";
 const LIFF_ID = "2009731150-xGXS0XX2";
 
 let currentLatitude = null;

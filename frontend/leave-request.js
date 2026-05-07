@@ -1,5 +1,7 @@
 const leaveForm = document.getElementById("leaveForm");
 const leaveDateInput = document.getElementById("leaveDate");
+const classIdInput = document.getElementById("classIdInput");
+const sectionInput = document.getElementById("sectionInput");
 const leaveNoteInput = document.getElementById("leaveNote");
 const attachmentInput = document.getElementById("attachmentInput");
 const uploadDropzone = document.getElementById("uploadDropzone");
@@ -75,6 +77,15 @@ function setDefaultDate() {
   const now = new Date();
   const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
   leaveDateInput.value = localDate.toISOString().split("T")[0];
+}
+
+function fillLeaveContextFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  const classId = params.get("class_id") || localStorage.getItem("class_id") || "";
+  const section = params.get("section") || localStorage.getItem("section") || "";
+
+  if (classIdInput && classId) classIdInput.value = classId;
+  if (sectionInput && section) sectionInput.value = section;
 }
 
 function setReason(nextReason) {
@@ -316,7 +327,14 @@ leaveForm.addEventListener("submit", async (event) => {
       throw new Error("ไม่พบ LINE user id กรุณาเข้าสู่ระบบใหม่");
     }
 
-    const sessionId = await getActiveSessionId();
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id") || localStorage.getItem("session_id") || null;
+    const classId = classIdInput.value.trim();
+    const section = sectionInput.value.trim();
+
+    if (!classId && !sessionId) {
+      throw new Error("กรุณากรอกรหัสคลาส หรือเปิดจากลิงก์ที่มี session_id");
+    }
 
     resultDate.textContent = formatDate(leaveDateInput.value);
     resultReason.textContent = selectedReason;
@@ -326,6 +344,8 @@ leaveForm.addEventListener("submit", async (event) => {
     const payload = {
       line_user_id: lineUserId,
       session_id: sessionId,
+      class_id: classId || null,
+      section: section || null,
       leave_date: leaveDateInput.value,
       type: selectedReason,
       reason: leaveNoteInput.value.trim() || selectedReason,
@@ -381,6 +401,7 @@ viewerDialog.addEventListener("close", revokePreviewUrl);
 window.addEventListener("beforeunload", revokePreviewUrl);
 
 setDefaultDate();
+fillLeaveContextFromQuery();
 setReason(selectedReason);
 updateFilePreview(null);
 initializeLeaveLiff();
