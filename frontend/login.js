@@ -115,7 +115,7 @@ function goToNextPage() {
   }
 
   // 3. ถ้าไม่ได้เปิดใน LINE (เช่น เทสในคอม) ให้เปลี่ยนหน้าตามสิทธิ์
-  if (pendingRole === "teacher") {
+  if (pendingRole === "employee") {
     window.location.href = "teacher-dashboard.html";
   } else if (pendingRole === "student") {
     window.location.href = "checkin.html";

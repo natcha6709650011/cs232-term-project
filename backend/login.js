@@ -157,7 +157,7 @@ exports.handler = async (event) => {
       .promise();
 
     try {
-      const menuId = (role === 'teacher') ? process.env.TEACHER_MENU_ID : process.env.STUDENT_MENU_ID;
+      const menuId = (role === 'employee') ? process.env.TEACHER_MENU_ID : process.env.STUDENT_MENU_ID;
       await client.linkRichMenuToUser(line_user_id, menuId);
     } catch (err) { console.error("Link Rich Menu Error:", err); }
 
