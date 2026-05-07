@@ -1,5 +1,7 @@
 const line = require("@line/bot-sdk");
 const { dynamodb } = require("./common");
+const AWS = require("aws-sdk");
+const s3 = new AWS.S3();
 
 const client = new line.Client({
   channelAccessToken: process.env.LINE_ACCESS_TOKEN,
@@ -8,6 +10,31 @@ const client = new line.Client({
 
 const ATTENDANCE_TABLE = process.env.ATTENDANCE_TABLE || "Attendance";
 const SESSIONS_TABLE = process.env.SESSIONS_TABLE || "Sessions";
+const BUCKET_NAME =
+  process.env.BUCKET_NAME ||
+  process.env.S3_BUCKET ||
+  "tu-attendance-images-s3";
+
+function generateViewUrl(filePath) {
+  if (!filePath) return null;
+
+  // ถ้าเป็น URL เต็ม
+  if (filePath.startsWith("http")) {
+    const url = new URL(filePath);
+    filePath = decodeURIComponent(
+      url.pathname.replace(/^\/+/, "")
+    );
+  }
+
+  // กัน path มี / นำหน้า
+  filePath = filePath.replace(/^\/+/, "");
+
+  return s3.getSignedUrl("getObject", {
+    Bucket: BUCKET_NAME,
+    Key: filePath,
+    Expires: 60 * 10
+  });
+}
 
 function formatTime(timestamp) {
   if (!timestamp) return "-";
@@ -112,7 +139,7 @@ exports.handler = async (event) => {
         // ให้ลองหา leave ล่าสุดของ user จาก Attendance table
         if (!attendance) {
           const latestLeaveAttendance = await getLatestLeaveAttendanceByUser(userId);
-        
+
           // ถ้ามี leave ล่าสุด และเป็น class/section เดียวกับ session ปัจจุบัน ให้ใช้เป็นสถานะ
           if (
             latestLeaveAttendance &&
@@ -125,9 +152,9 @@ exports.handler = async (event) => {
             attendance = latestLeaveAttendance;
           }
         }
-        
+
         console.log("WEBHOOK final attendance:", attendance);
-        
+
         if (!attendance) {
           return client.replyMessage(replyToken, {
             type: "text",
@@ -139,7 +166,7 @@ exports.handler = async (event) => {
               `หมายเหตุ: หากกดเช็คชื่อแล้วแต่ยังไม่ขึ้น ให้ลองกดใหม่หรือแจ้งอาจารย์`
           });
         }
-      
+
 
         const statusMap = {
           present: "✅ มาเรียน",
@@ -159,6 +186,58 @@ exports.handler = async (event) => {
         }
         const time = formatTime(attendance.checkin_time || attendance.leave_time);
 
+        const attachmentPath =
+          attendance.attachment_url ||
+          attendance.file_path ||
+          attendance.image_url;
+
+        const attachmentUrl = attachmentPath
+          ? generateViewUrl(attachmentPath)
+          : null;
+
+        // ถ้ามีไฟล์แนบ
+        if (attachmentUrl) {
+
+          // เช็คว่าเป็นรูปไหม
+          const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(
+            attachmentPath
+          );
+
+          // ถ้าเป็นรูป → ส่งรูปใน LINE
+          if (isImage) {
+            return client.replyMessage(replyToken, [
+              {
+                type: "text",
+                text:
+                  `📊 สถานะของฉัน\n` +
+                  `วิชา: ${attendance.course_name || activeSession.course_name || "-"}\n` +
+                  `Section: ${attendance.section || activeSession.section || "-"}\n` +
+                  `สถานะ: ${statusText}\n` +
+                  `เวลา: ${time}\n` +
+                  `📎 มีเอกสารแนบ`
+              },
+              {
+                type: "image",
+                originalContentUrl: attachmentUrl,
+                previewImageUrl: attachmentUrl
+              }
+            ]);
+          }
+
+          // ถ้าเป็น PDF หรือไฟล์อื่น
+          return client.replyMessage(replyToken, {
+            type: "text",
+            text:
+              `📊 สถานะของฉัน\n` +
+              `วิชา: ${attendance.course_name || activeSession.course_name || "-"}\n` +
+              `Section: ${attendance.section || activeSession.section || "-"}\n` +
+              `สถานะ: ${statusText}\n` +
+              `เวลา: ${time}\n\n` +
+              `📎 เอกสารแนบ:\n${attachmentUrl}`
+          });
+        }
+
+        // ถ้าไม่มีไฟล์แนบ
         return client.replyMessage(replyToken, {
           type: "text",
           text:

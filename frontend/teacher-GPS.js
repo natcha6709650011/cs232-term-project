@@ -185,6 +185,7 @@ function finishProcess() {
 }
 
 async function downloadQRCode() {
+<<<<<<< HEAD
   const qrImage = document.getElementById("final-qr");
 
   if (!qrImage.src) return;
@@ -203,3 +204,23 @@ async function downloadQRCode() {
   }
 }
 
+=======
+    const qrImage = document.getElementById('final-qr') || document.getElementById('qr-online');
+    if (!qrImage || !qrImage.src) return;
+
+    if (liff.isInClient()) {
+        // แจ้งเตือนสั้นๆ แล้วเปิด Browser นอกเพื่อให้กดเซฟได้ชัวร์ๆ
+        alert("ระบบจะเปิดรูปภาพใน Browser กรุณากดค้างที่รูปเพื่อบันทึก");
+        liff.openWindow({
+            url: qrImage.src,
+            external: true
+        });
+    } else {
+        // บนคอมพิวเตอร์ให้ดาวน์โหลดปกติ
+        const a = document.createElement('a');
+        a.href = qrImage.src;
+        a.download = 'QR_Attendance.png';
+        a.click();
+    }
+}
+>>>>>>> c00f767ea6a57c194af0245f70c4c0175a6a2b42

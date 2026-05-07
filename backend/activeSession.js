@@ -1,28 +1,17 @@
-const AWS = require("aws-sdk");
-
-const dynamodb = new AWS.DynamoDB.DocumentClient();
+const { response, dynamodb } = require("./common");
 
 const SESSIONS_TABLE = process.env.SESSIONS_TABLE || "Sessions";
 
-function response(statusCode, body) {
-  return {
-    statusCode,
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "Content-Type",
-      "Access-Control-Allow-Methods": "OPTIONS,GET,POST"
-    },
-    body: JSON.stringify(body)
-  };
-}
-
 exports.handler = async (event) => {
   try {
+    // รองรับ CORS preflight
     if (event.requestContext?.http?.method === "OPTIONS") {
       return response(200, { success: true });
     }
 
+    const now = Date.now();
+
+    // หา session ที่ status = active
     const result = await dynamodb.scan({
       TableName: SESSIONS_TABLE,
       FilterExpression: "#status = :active",
@@ -34,7 +23,13 @@ exports.handler = async (event) => {
       }
     }).promise();
 
-    const sessions = result.Items || [];
+    let sessions = result.Items || [];
+
+    // ถ้ามี expire_at ให้กรองเฉพาะ session ที่ยังไม่หมดอายุ
+    sessions = sessions.filter((session) => {
+      if (!session.expire_at) return true;
+      return Number(session.expire_at) > now;
+    });
 
     if (sessions.length === 0) {
       return response(404, {
@@ -43,25 +38,28 @@ exports.handler = async (event) => {
       });
     }
 
+    // เรียงเอา session ล่าสุด
     sessions.sort((a, b) => {
-      const timeA = new Date(a.start_time || a.created_at || 0).getTime();
-      const timeB = new Date(b.start_time || b.created_at || 0).getTime();
-      return timeB - timeA;
+      const aTime = Number(a.created_at || 0);
+      const bTime = Number(b.created_at || 0);
+      return bTime - aTime;
     });
 
-    const session = sessions[0];
+    const activeSession = sessions[0];
 
     return response(200, {
       success: true,
-      session_id: session.session_id,
-      data: session
+      session_id: activeSession.session_id,
+      data: activeSession
     });
+
   } catch (error) {
-    console.error("active session error:", error);
+    console.error("activeSession error:", error);
 
     return response(500, {
       success: false,
-      message: error.message || "cannot get active session"
+      message: "internal server error",
+      error: error.message
     });
   }
 };

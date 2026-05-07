@@ -32,46 +32,6 @@ async function fetchViewUrl(path) {
     }
 }
 
-async function submitApproval(status) {
-    // status = "approved" หรือ "rejected"
-    const leaveId = getLeaveIdFromUrl();
-
-    if (!leaveId) {
-        alert("ไม่พบ leaveId");
-        return;
-    }
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/update-leave-status`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                leaveId: leaveId,
-                status: status
-            })
-        });
-
-        let result = null;
-
-        try {
-            result = await response.json();
-        } catch (err) {
-            result = null;
-        }
-
-        if (!response.ok || (result && result.success === false)) {
-            throw new Error(result?.message || "อัปเดตสถานะไม่สำเร็จ");
-        }
-
-        alert(status === "approved" ? "อนุมัติสำเร็จ" : "ไม่อนุมัติสำเร็จ");
-        window.location.href = "teacher-dashboard.html";
-    } catch (err) {
-        console.error("submitApproval error:", err);
-        alert(err.message || "เกิดข้อผิดพลาด กรุณาลองใหม่");
-    }
-}
 
 function getLeaveIdFromUrl() {
     const params = new URLSearchParams(window.location.search);

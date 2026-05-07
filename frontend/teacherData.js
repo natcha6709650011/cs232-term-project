@@ -130,7 +130,11 @@ function showOnlineQR(result) {
     document.getElementById('qr-time').innerText      = `เวลา ${time}`;
 
     // สร้าง QR จาก checkin_url ที่ Backend ส่งมา (หรือ fallback)
-    const checkinUrl = result.checkin_url || `https://line.me/R/oaMessage/@bot/?checkin=${currentClassId}`;
+    const checkinUrl =
+    result?.data?.checkin_link ||
+    result?.checkin_url ||
+    result?.data?.checkin_url ||
+    `https://liff.line.me/${LIFF_ID}?session_id=${result?.data?.session_id || ""}`;
     document.getElementById('qr-online').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(checkinUrl)}`;
 
     showView('view-qr');
@@ -174,17 +178,23 @@ function retryOnline() {
 
 // ==================== DOWNLOAD QR ====================
 async function downloadQRCode() {
-    const qrImage = document.getElementById('qr-online');
-    if (!qrImage?.src) return;
-    try {
-        const response = await fetch(qrImage.src);
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
+    const qrImage = document.getElementById('final-qr') || document.getElementById('qr-online');
+    if (!qrImage || !qrImage.src) return;
+
+    if (liff.isInClient()) {
+        // แจ้งเตือนสั้นๆ แล้วเปิด Browser นอกเพื่อให้กดเซฟได้ชัวร์ๆ
+        alert("ระบบจะเปิดรูปภาพใน Browser กรุณากดค้างที่รูปเพื่อบันทึก");
+        liff.openWindow({
+            url: qrImage.src,
+            external: true
+        });
+    } else {
+        // บนคอมพิวเตอร์ให้ดาวน์โหลดปกติ
         const a = document.createElement('a');
-        a.href = url;
-        a.download = `QRCode_${currentClassId}.png`;
+        a.href = qrImage.src;
+        a.download = 'QR_Attendance.png';
         a.click();
-    } catch (e) { alert("ดาวน์โหลดล้มเหลว"); }
+    }
 }
 
 // ==================== UTILS ====================
