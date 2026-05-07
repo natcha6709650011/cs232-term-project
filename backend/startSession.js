@@ -111,7 +111,7 @@ exports.handler = async (event) => {
 
     // ตรวจสอบว่า user นี้เป็นอาจารย์หรือไม่
     // เฉพาะ role teacher เท่านั้นที่เริ่ม session ได้
-    if (user.role !== "teacher") {
+    if (user.role !== "employee") {
       return response(403, {
         success: false,
         message: "only teacher can start session"

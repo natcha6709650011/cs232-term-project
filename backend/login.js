@@ -120,7 +120,7 @@ exports.handler = async (event) => {
     let role = "student";
 
     if (tuData.type === "employee") {
-      role = "teacher";
+      role = "employee";
     }
 
     // เตรียม object user ที่จะเก็บลง DynamoDB
