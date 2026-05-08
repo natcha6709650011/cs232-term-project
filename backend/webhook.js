@@ -463,8 +463,6 @@ exports.handler = async (event) => {
           });
         }
 
-        const rawStatus = (attendance.status || "").trim().toLowerCase();
-        const leaveType = (attendance.leave_type || "").trim();
 
         const statusMap = {
           present: "✅ มาเรียน",
@@ -473,15 +471,13 @@ exports.handler = async (event) => {
           absent: "❌ ขาดเรียน"
         };
 
-        let statusText = statusMap[rawStatus] || "❓ ไม่ทราบสถานะ";
+        let statusText = statusMap[attendance.status] || "❓ ไม่ทราบสถานะ";
 
-        if (rawStatus === "leave") {
-          if (leaveType === "ลาป่วย") {
+        if (attendance.status === "leave") {
+          if (attendance.leave_type === "ลาป่วย") {
             statusText = "🤒 ลาป่วย";
-          } else if (leaveType === "ลากิจ") {
+          } else if (attendance.leave_type === "ลากิจ") {
             statusText = "📌 ลากิจ";
-          } else {
-            statusText = "🟡 ลา";
           }
         }
         const time = formatTime(attendance.checkin_time || attendance.leave_time);
