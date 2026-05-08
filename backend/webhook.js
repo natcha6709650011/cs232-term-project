@@ -20,6 +20,9 @@ const ROSTER_TABLE = process.env.ROSTER_TABLE || "ClassRoster";
 
 // DEMO locked sessions: use these instead of newly generated sessions
 const DEMO_SESSION_IDS = ["ONLINE650001", "YSqk16"];
+const ALLOWED_SESSION_IDS = DEMO_SESSION_IDS;
+const LEAVE_PAGE_SIZE = 5;
+const FRONTEND_BASE_URL = process.env.FRONTEND_BASE_URL || "https://main.d1d25usb5e0o4s.amplifyapp.com/frontend";
 
 function getContentType(filePath) {
   if (!filePath) return "application/octet-stream";
@@ -76,6 +79,32 @@ function formatDate(timestamp) {
 
 function firstChar(name) {
   return (name || "?").trim().charAt(0);
+}
+
+function cleanValue(value, fallback = "-") {
+  if (value === undefined || value === null) return fallback;
+  const text = String(value).trim();
+  if (!text || text.toLowerCase() === "null" || text.toLowerCase() === "undefined") {
+    return fallback;
+  }
+  return text;
+}
+
+function getAttachmentPath(record) {
+  const candidates = [record?.attachment_url, record?.file_path, record?.image_url];
+  for (const value of candidates) {
+    const cleaned = cleanValue(value, "");
+    if (cleaned) return cleaned;
+  }
+  return null;
+}
+
+function normalizeTimestamp(value) {
+  if (!value) return 0;
+  const n = Number(value);
+  if (!Number.isNaN(n)) return n;
+  const d = Date.parse(value);
+  return Number.isNaN(d) ? 0 : d;
 }
 
 function isActiveSession(session) {
@@ -148,21 +177,20 @@ async function getRoster(class_id) {
 }
 
 async function getLeavesBySession(session_id, class_id) {
+  // ใช้ scan ตรง ๆ เพื่อไม่ต้องพึ่ง session_id-index
+  // แล้วคัดเฉพาะ 2 session ที่ใช้จริงใน demo เท่านั้น
   try {
-    const r = await dynamodb.query({
-      TableName: LEAVE_TABLE,
-      IndexName: "session_id-index",
-      KeyConditionExpression: "session_id = :sid",
-      ExpressionAttributeValues: { ":sid": session_id }
+    const result = await dynamodb.scan({
+      TableName: LEAVE_TABLE
     }).promise();
-    return r.Items || [];
-  } catch {
-    const r = await dynamodb.scan({
-      TableName: LEAVE_TABLE,
-      FilterExpression: "session_id = :sid OR class_id = :cid",
-      ExpressionAttributeValues: { ":sid": session_id, ":cid": class_id || "__none__" }
-    }).promise();
-    return r.Items || [];
+
+    const allowed = new Set(ALLOWED_SESSION_IDS);
+    return (result.Items || [])
+      .filter(item => allowed.has(item.session_id))
+      .sort((a, b) => normalizeTimestamp(b.created_at || b.updated_at) - normalizeTimestamp(a.created_at || a.updated_at));
+  } catch (err) {
+    console.error("SCAN LEAVES ERROR:", err);
+    return [];
   }
 }
 
@@ -265,46 +293,107 @@ function buildPresentListFlex(session, students) {
   return { type: "flex", altText: "รายชื่อมาเรียน", contents: { type: "bubble", size: "mega", header: { type: "box", layout: "vertical", backgroundColor: "#F5F5F5", paddingAll: "20px", contents: [{ type: "text", text: "รายชื่อมาเรียน", weight: "bold" }] }, body: { type: "box", layout: "vertical", paddingAll: "xl", contents: rows.length ? rows : [{ type: "text", text: "ไม่มีข้อมูล" }] } } };
 }
 
-function buildLeaveListFlex(session, leaveStudents) {
-  const rows = leaveStudents.map(s => ({
-    type: "box", layout: "vertical", margin: "md", paddingBottom: "md",
-    contents: [
-      {
-        type: "box", layout: "horizontal", alignItems: "center", contents: [
-          { type: "box", layout: "vertical", width: "40px", height: "40px", backgroundColor: "#FFB74D", cornerRadius: "100px", alignItems: "center", justifyContent: "center", contents: [{ type: "text", text: firstChar(s.student_name || s.username), color: "#ffffff" }] },
-          { type: "box", layout: "vertical", margin: "lg", contents: [{ type: "text", text: s.student_name || s.username || "-", weight: "bold", size: "sm" }, { type: "text", text: s.leave_type || "แจ้งลา", size: "xs", color: "#EB8500" }] }
-        ]
-      },
-      { type: "button", action: { type: "postback", label: "ดูรายละเอียดการลา", data: `action=view_leave_detail&leave_id=${s.leave_id || ""}` }, style: "link", height: "sm" },
-      { type: "separator" }
-    ]
-  }));
-  return { type: "flex", altText: "รายชื่อแจ้งลา", contents: { type: "bubble", size: "mega", header: { type: "box", layout: "vertical", backgroundColor: "#F5F5F5", paddingAll: "20px", contents: [{ type: "text", text: "รายชื่อแจ้งลา", weight: "bold" }] }, body: { type: "box", layout: "vertical", paddingAll: "xl", contents: rows.length ? rows : [{ type: "text", text: "ไม่มีข้อมูล" }] } } };
+function buildLeaveListFlex(session, leaveStudents, page = 1) {
+  const safePage = Math.max(1, Number(page) || 1);
+  const total = leaveStudents.length;
+  const totalPages = Math.max(1, Math.ceil(total / LEAVE_PAGE_SIZE));
+  const currentPage = Math.min(safePage, totalPages);
+  const startIndex = (currentPage - 1) * LEAVE_PAGE_SIZE;
+  const pageItems = leaveStudents.slice(startIndex, startIndex + LEAVE_PAGE_SIZE);
+
+  const rows = pageItems.map((s, idx) => {
+    const attachmentPath = getAttachmentPath(s);
+    const attachmentName = cleanValue(s.attachment_name, attachmentPath ? "มีเอกสารแนบ" : "ไม่มีเอกสารแนบ");
+
+    return {
+      type: "box", layout: "vertical", margin: "md", paddingBottom: "md",
+      contents: [
+        {
+          type: "box", layout: "horizontal", alignItems: "center", contents: [
+            { type: "box", layout: "vertical", width: "40px", height: "40px", backgroundColor: "#FFB74D", cornerRadius: "100px", alignItems: "center", justifyContent: "center", contents: [{ type: "text", text: firstChar(s.student_name || s.username), color: "#ffffff" }] },
+            { type: "box", layout: "vertical", margin: "lg", contents: [
+              { type: "text", text: cleanValue(s.student_name || s.username), weight: "bold", size: "sm", wrap: true },
+              { type: "text", text: `รหัส: ${cleanValue(s.student_username, "-")}`, size: "xs", color: "#777777" },
+              { type: "text", text: cleanValue(s.leave_type, "แจ้งลา"), size: "xs", color: "#EB8500" },
+              { type: "text", text: attachmentPath ? `มีไฟล์แนบ: ${attachmentName}` : "ไม่มีเอกสารแนบ", size: "xs", color: attachmentPath ? "#2865E3" : "#9CA3AF", wrap: true }
+            ] }
+          ]
+        },
+        { type: "button", action: { type: "postback", label: "ดูรายละเอียดการลา", data: `action=view_leave_detail&leave_id=${encodeURIComponent(s.leave_id || "")}` }, style: "link", height: "sm" },
+        { type: "separator" }
+      ]
+    };
+  });
+
+  const pagerButtons = [];
+  if (currentPage > 1) {
+    pagerButtons.push({ type: "button", style: "secondary", height: "sm", action: { type: "postback", label: "หน้าก่อนหน้า", data: `action=view_list&status=leave&page=${currentPage - 1}` } });
+  }
+  if (currentPage < totalPages) {
+    pagerButtons.push({ type: "button", style: "secondary", height: "sm", action: { type: "postback", label: "หน้าถัดไป", data: `action=view_list&status=leave&page=${currentPage + 1}` } });
+  }
+
+  const bodyContents = [
+    { type: "text", text: `แสดงหน้า ${currentPage}/${totalPages} • ทั้งหมด ${total} รายการ`, size: "xs", color: "#777777", wrap: true },
+    ...(rows.length ? rows : [{ type: "text", text: "ไม่มีข้อมูล", wrap: true }]),
+    ...(pagerButtons.length ? [{ type: "box", layout: "horizontal", spacing: "sm", margin: "lg", contents: pagerButtons }] : [])
+  ];
+
+  return {
+    type: "flex",
+    altText: "รายชื่อแจ้งลา",
+    contents: {
+      type: "bubble",
+      size: "mega",
+      header: { type: "box", layout: "vertical", backgroundColor: "#F5F5F5", paddingAll: "20px", contents: [{ type: "text", text: "รายชื่อแจ้งลา", weight: "bold" }] },
+      body: { type: "box", layout: "vertical", paddingAll: "xl", contents: bodyContents }
+    }
+  };
 }
 
 function buildLeaveDetailFlex(leaveRecord, session) {
-  const name = leaveRecord.student_name || leaveRecord.username || "-";
-  const attachPath = leaveRecord.attachment_url || leaveRecord.file_path;
-  const signedUrl = generateViewUrl(attachPath);
-  const isPdf = attachPath && /\.pdf$/i.test(attachPath);
+  const name = cleanValue(leaveRecord.student_name || leaveRecord.username);
+  const studentId = cleanValue(leaveRecord.student_username, "-");
+  const course = cleanValue(leaveRecord.course_name || session?.course_name || leaveRecord.course_id || session?.course_id, "CS232 INTRODUCTION TO CLOUD COMPUTING TECHNOLOGY");
+  const section = cleanValue(leaveRecord.section || session?.section, "650001");
+  const leaveType = cleanValue(leaveRecord.leave_type, "แจ้งลา");
+  const leaveDate = cleanValue(leaveRecord.leave_date, "-");
+  const reason = cleanValue(leaveRecord.reason || leaveRecord.note, "-");
+  const status = cleanValue(leaveRecord.status, "pending");
+  const attachPath = getAttachmentPath(leaveRecord);
+  const attachmentName = cleanValue(leaveRecord.attachment_name, attachPath ? "เอกสารแนบ" : "ไม่มีเอกสารแนบ");
+
+  // LINE URI action rejects very long S3 presigned URLs.
+  // Use a short frontend viewer URL; the viewer page will request generate-view-url itself.
+  let attachmentViewerUrl = null;
+  if (attachPath) {
+    attachmentViewerUrl = `${FRONTEND_BASE_URL}/TeacherViewPicture.html?file_path=${encodeURIComponent(attachPath)}&name=${encodeURIComponent(attachmentName)}`;
+  }
+
+  const detailContents = [
+    { type: "text", text: `ชื่อ-นามสกุล: ${name}`, weight: "bold", wrap: true },
+    { type: "text", text: `รหัส: ${studentId}`, size: "sm", wrap: true },
+    { type: "text", text: `วิชา: ${course}`, size: "sm", wrap: true },
+    { type: "text", text: `Section: ${section}`, size: "sm", wrap: true },
+    { type: "separator" },
+    { type: "text", text: `ประเภทการลา: ${leaveType}`, size: "sm", wrap: true },
+    { type: "text", text: `วันที่ลา: ${leaveDate}`, size: "sm", wrap: true },
+    { type: "text", text: `เหตุผล: ${reason}`, size: "sm", wrap: true },
+    { type: "text", text: `สถานะ: ${status}`, size: "sm", wrap: true },
+    { type: "separator" },
+    { type: "text", text: attachmentViewerUrl ? `เอกสารแนบ: ${attachmentName}` : "ไม่มีเอกสารแนบ", size: "sm", color: attachmentViewerUrl ? "#2865E3" : "#9CA3AF", wrap: true }
+  ];
+
+  if (attachmentViewerUrl) {
+    detailContents.push({ type: "button", action: { type: "uri", label: "ดูเอกสารแนบ", uri: attachmentViewerUrl }, style: "primary", color: "#2865E3" });
+  }
 
   return {
     type: "flex", altText: "รายละเอียดการลา",
     contents: {
       type: "bubble", size: "mega",
       header: { type: "box", layout: "vertical", backgroundColor: "#2865E3", paddingAll: "20px", contents: [{ type: "text", text: "รายละเอียดการลา", weight: "bold", color: "#ffffff" }] },
-      body: {
-        type: "box", layout: "vertical", paddingAll: "xl", spacing: "md",
-        contents: [
-          { type: "text", text: `ชื่อ-นามสกุล: ${name}`, weight: "bold" },
-          { type: "text", text: `ประเภท: ${leaveRecord.leave_type || "ลากิจ"}`, size: "sm" },
-          { type: "text", text: `เหตุผล: ${leaveRecord.reason || "-"}`, size: "sm", wrap: true },
-          { type: "separator" },
-          signedUrl
-            ? { type: "button", action: { type: "uri", label: isPdf ? "📂 เปิดดูไฟล์ PDF" : "🖼️ ดูรูปภาพประกอบ", uri: signedUrl }, style: "primary", color: "#2865E3" }
-            : { type: "text", text: "ไม่มีเอกสารแนบ", color: "#9D9D9D", size: "xs" }
-        ]
-      }
+      body: { type: "box", layout: "vertical", paddingAll: "xl", spacing: "md", contents: detailContents }
     }
   };
 }
@@ -372,22 +461,25 @@ exports.handler = async (event) => {
         if (e.type === "message" && e.message?.text === "นักศึกษาลากิจ/ลาป่วย") {
           const session = await getLatestActiveSession();
           if (!session) return client.replyMessage(replyToken, { type: "text", text: "📌 ยังไม่มีคาบเรียนที่กำลังดำเนินอยู่" });
+
+          // เรียกใช้ฟังก์ชัน scan ที่เราแก้ใหม่
           const leaves = await getLeavesBySession(session.session_id, session.class_id);
-          return client.replyMessage(replyToken, buildLeaveListFlex(session, leaves));
+          return client.replyMessage(replyToken, buildLeaveListFlex(session, leaves, 1));
         }
 
+        // 2. ปุ่มกด "ดูรายชื่อแจ้งลา" จากหน้าสรุป
         if (e.type === "postback" && e.postback.data.includes("action=view_list")) {
           const params = new URLSearchParams(e.postback.data);
           const status = params.get("status");
+          const page = Number(params.get("page") || 1);
           const session = await getSessionById(params.get("session_id")) || await getLatestActiveSession();
-          if (!session) return;
 
           if (status === "present") {
             const all = await getAllAttendanceBySession(session.session_id);
             return client.replyMessage(replyToken, buildPresentListFlex(session, all.filter(a => ["present", "late"].includes(a.status))));
-          } else if (status === "leave") {
+          } else if (status === "leave" && session) {
             const leaves = await getLeavesBySession(session.session_id, session.class_id);
-            return client.replyMessage(replyToken, buildLeaveListFlex(session, leaves));
+            return client.replyMessage(replyToken, buildLeaveListFlex(session, leaves, page));
           } else if (status === "absent") {
             const [all, roster] = await Promise.all([getAllAttendanceBySession(session.session_id), getRoster(session.class_id)]);
             const attIds = new Set(all.map(a => a.line_user_id));
@@ -395,20 +487,24 @@ exports.handler = async (event) => {
           }
         }
 
+        // 3. ปุ่มกด "ดูรายละเอียดการลา" (ดึงข้อมูลด้วย Primary Key leave_id ตรงๆ ไม่ต้องใช้ Index)
         if (e.type === "postback" && e.postback.data.includes("action=view_leave_detail")) {
           const leaveId = new URLSearchParams(e.postback.data).get("leave_id");
           const leaveRec = await getLeaveRecord(leaveId);
-          if (!leaveRec) return client.replyMessage(replyToken, { type: "text", text: "ไม่พบข้อมูล" });
-          const session = await getSessionById(leaveRec.session_id) || await getLatestActiveSession();
 
-          const detailFlex = buildLeaveDetailFlex(leaveRec, session);
-          const attachPath = leaveRec.attachment_url || leaveRec.file_path;
-          const isImg = attachPath && /\.(jpg|jpeg|png|gif|webp)$/i.test(attachPath);
-          const imgUrl = isImg ? generateViewUrl(attachPath) : null;
-
-          if (imgUrl) {
-            return client.replyMessage(replyToken, [detailFlex, { type: "image", originalContentUrl: imgUrl, previewImageUrl: imgUrl }]);
+          if (!leaveRec) {
+            return client.replyMessage(replyToken, { type: "text", text: "ไม่พบข้อมูลใบลา" });
           }
+
+          if (!ALLOWED_SESSION_IDS.includes(leaveRec.session_id)) {
+            return client.replyMessage(replyToken, { type: "text", text: "รายการนี้ไม่ได้อยู่ใน session ที่ใช้งาน" });
+          }
+
+          const session = await getSessionById(leaveRec.session_id) || await getLatestActiveSession();
+          const detailFlex = buildLeaveDetailFlex(leaveRec, session);
+
+          // ไม่ส่ง image message แยก เพราะ presigned URL/ขนาดไฟล์บางกรณีทำให้ LINE 400 ได้
+          // ใช้ปุ่ม URI ใน Flex แทน ปลอดภัยกว่า
           return client.replyMessage(replyToken, detailFlex);
         }
 
@@ -583,6 +679,16 @@ exports.handler = async (event) => {
         });
       } catch (err) {
         console.error("HANDLER ERROR:", err);
+        try {
+          if (e.replyToken) {
+            await client.replyMessage(e.replyToken, {
+              type: "text",
+              text: "ระบบเกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง"
+            });
+          }
+        } catch (replyErr) {
+          console.error("FALLBACK REPLY ERROR:", replyErr);
+        }
       }
     })
   );
