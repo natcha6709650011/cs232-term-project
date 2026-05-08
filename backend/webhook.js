@@ -21,6 +21,20 @@ const ROSTER_TABLE = process.env.ROSTER_TABLE || "ClassRoster";
 // DEMO locked sessions: use these instead of newly generated sessions
 const DEMO_SESSION_IDS = ["ONLINE650001", "YSqk16"];
 
+function getContentType(filePath) {
+  if (!filePath) return "application/octet-stream";
+  const ext = filePath.split(".").pop().toLowerCase().split("?")[0];
+  const map = {
+    pdf: "application/pdf",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    gif: "image/gif",
+    webp: "image/webp",
+    heic: "image/heic"
+  };
+  return map[ext] || "application/octet-stream";
+}
 
 function generateViewUrl(filePath) {
   if (!filePath) return null;
@@ -39,7 +53,9 @@ function generateViewUrl(filePath) {
   return s3.getSignedUrl("getObject", {
     Bucket: BUCKET_NAME,
     Key: filePath,
-    Expires: 60 * 10
+    Expires: 60 * 10,
+    ResponseContentType: getContentType(filePath),
+    ResponseContentDisposition: "inline"
   });
 }
 
@@ -196,13 +212,11 @@ async function getLatestLeaveAttendanceByUser(line_user_id, session_id) {
   return leaveItems[0] || null;
 }
 
+// --- [เริ่มแก้ข้อ 2 จากตรงนี้] ---
+
 function buildSummaryFlex(session, presentCount, leaveCount, absentCount) {
   const dateStr = formatDate(session.created_at);
-  const start = formatTime(session.created_at);
-  const end = formatTime(session.expire_at);
-  const courseStr = `${session.course_id || "-"} • ${session.section || "-"} • ${start}–${end}`;
   const sid = session.session_id;
-
   return {
     type: "flex",
     altText: "สรุปการเข้าเรียน",
@@ -212,8 +226,7 @@ function buildSummaryFlex(session, presentCount, leaveCount, absentCount) {
         type: "box", layout: "vertical", backgroundColor: "#2865E3", paddingAll: "25px",
         contents: [
           { type: "text", text: "สรุปการเข้าเรียน", weight: "bold", color: "#ffffff", size: "xl" },
-          { type: "text", text: `วันที่ ${dateStr}`, color: "#ffffff", size: "sm", margin: "sm" },
-          { type: "text", text: courseStr, color: "#ffffff", size: "sm", margin: "xs" }
+          { type: "text", text: `วันที่ ${dateStr}`, color: "#ffffff", size: "sm", margin: "sm" }
         ]
       },
       body: {
@@ -222,15 +235,9 @@ function buildSummaryFlex(session, presentCount, leaveCount, absentCount) {
           {
             type: "box", layout: "horizontal", spacing: "md",
             contents: [
-              { type: "box", layout: "vertical", flex: 1, backgroundColor: "#B2DFDB", cornerRadius: "lg", paddingAll: "md", alignItems: "center", borderWidth: "1px", borderColor: "#4DB6AC",
-                contents: [{ type: "text", text: String(presentCount), weight: "bold", size: "xxl" }, { type: "text", text: "มาเรียน", size: "sm", weight: "bold" }]
-              },
-              { type: "box", layout: "vertical", flex: 1, backgroundColor: "#FFE0B2", cornerRadius: "lg", paddingAll: "md", alignItems: "center", borderWidth: "1px", borderColor: "#FFB74D",
-                contents: [{ type: "text", text: String(leaveCount), weight: "bold", size: "xxl" }, { type: "text", text: "แจ้งลา", size: "sm", weight: "bold" }]
-              },
-              { type: "box", layout: "vertical", flex: 1, backgroundColor: "#FFCDD2", cornerRadius: "lg", paddingAll: "md", alignItems: "center", borderWidth: "1px", borderColor: "#E57373",
-                contents: [{ type: "text", text: String(absentCount), weight: "bold", size: "xxl" }, { type: "text", text: "ขาดเรียน", size: "sm", weight: "bold" }]
-              }
+              { type: "box", layout: "vertical", flex: 1, backgroundColor: "#B2DFDB", cornerRadius: "lg", paddingAll: "md", alignItems: "center", contents: [{ type: "text", text: String(presentCount), weight: "bold" }, { type: "text", text: "มาเรียน", size: "xs" }] },
+              { type: "box", layout: "vertical", flex: 1, backgroundColor: "#FFE0B2", cornerRadius: "lg", paddingAll: "md", alignItems: "center", contents: [{ type: "text", text: String(leaveCount), weight: "bold" }, { type: "text", text: "แจ้งลา", size: "xs" }] },
+              { type: "box", layout: "vertical", flex: 1, backgroundColor: "#FFCDD2", cornerRadius: "lg", paddingAll: "md", alignItems: "center", contents: [{ type: "text", text: String(absentCount), weight: "bold" }, { type: "text", text: "ขาดเรียน", size: "xs" }] }
             ]
           },
           {
@@ -251,41 +258,51 @@ function buildPresentListFlex(session, students) {
   const rows = students.map(s => ({
     type: "box", layout: "horizontal", alignItems: "center", margin: "md",
     contents: [
-      { type: "box", layout: "vertical", width: "40px", height: "40px", backgroundColor: "#4DB6AC", cornerRadius: "100px", alignItems: "center", justifyContent: "center", contents: [{ type: "text", text: firstChar(s.student_name), color: "#ffffff" }] },
+      { type: "box", layout: "vertical", width: "40px", height: "40px", backgroundColor: "#4DB6AC", cornerRadius: "100px", alignItems: "center", justifyContent: "center", contents: [{ type: "text", text: firstChar(s.student_name || s.username), color: "#ffffff" }] },
       { type: "box", layout: "vertical", margin: "lg", contents: [{ type: "text", text: s.student_name || s.username || "-", weight: "bold", size: "sm" }, { type: "text", text: s.student_username || "-", size: "xs", color: "#888888" }] }
     ]
   }));
-
-  return {
-    type: "flex", altText: "รายชื่อมาเรียน",
-    contents: { type: "bubble", header: { type: "box", layout: "vertical", contents: [{ type: "text", text: "รายชื่อมาเรียน", weight: "bold" }] }, body: { type: "box", layout: "vertical", contents: rows.length ? rows : [{ type: "text", text: "ไม่มีข้อมูล" }] } }
-  };
+  return { type: "flex", altText: "รายชื่อมาเรียน", contents: { type: "bubble", size: "mega", header: { type: "box", layout: "vertical", backgroundColor: "#F5F5F5", paddingAll: "20px", contents: [{ type: "text", text: "รายชื่อมาเรียน", weight: "bold" }] }, body: { type: "box", layout: "vertical", paddingAll: "xl", contents: rows.length ? rows : [{ type: "text", text: "ไม่มีข้อมูล" }] } } };
 }
 
 function buildLeaveListFlex(session, leaveStudents) {
   const rows = leaveStudents.map(s => ({
-    type: "box", layout: "vertical", margin: "md",
+    type: "box", layout: "vertical", margin: "md", paddingBottom: "md",
     contents: [
-      { type: "text", text: `${s.student_name || s.username} (${s.leave_type})`, weight: "bold", size: "sm" },
-      { type: "button", height: "sm", action: { type: "postback", label: "ดูใบลา", data: `action=view_leave_detail&leave_id=${s.leave_id}` } }
+      {
+        type: "box", layout: "horizontal", alignItems: "center", contents: [
+          { type: "box", layout: "vertical", width: "40px", height: "40px", backgroundColor: "#FFB74D", cornerRadius: "100px", alignItems: "center", justifyContent: "center", contents: [{ type: "text", text: firstChar(s.student_name || s.username), color: "#ffffff" }] },
+          { type: "box", layout: "vertical", margin: "lg", contents: [{ type: "text", text: s.student_name || s.username || "-", weight: "bold", size: "sm" }, { type: "text", text: s.leave_type || "แจ้งลา", size: "xs", color: "#EB8500" }] }
+        ]
+      },
+      { type: "button", action: { type: "postback", label: "ดูรายละเอียดการลา", data: `action=view_leave_detail&leave_id=${s.leave_id || ""}` }, style: "link", height: "sm" },
+      { type: "separator" }
     ]
   }));
-  return { type: "flex", altText: "รายชื่อแจ้งลา", contents: { type: "bubble", body: { type: "box", layout: "vertical", contents: rows.length ? rows : [{ type: "text", text: "ไม่มีข้อมูล" }] } } };
+  return { type: "flex", altText: "รายชื่อแจ้งลา", contents: { type: "bubble", size: "mega", header: { type: "box", layout: "vertical", backgroundColor: "#F5F5F5", paddingAll: "20px", contents: [{ type: "text", text: "รายชื่อแจ้งลา", weight: "bold" }] }, body: { type: "box", layout: "vertical", paddingAll: "xl", contents: rows.length ? rows : [{ type: "text", text: "ไม่มีข้อมูล" }] } } };
 }
 
 function buildLeaveDetailFlex(leaveRecord, session) {
+  const name = leaveRecord.student_name || leaveRecord.username || "-";
   const attachPath = leaveRecord.attachment_url || leaveRecord.file_path;
-  const signedUrl = attachPath ? generateViewUrl(attachPath) : null;
+  const signedUrl = generateViewUrl(attachPath);
+  const isPdf = attachPath && /\.pdf$/i.test(attachPath);
+
   return {
     type: "flex", altText: "รายละเอียดการลา",
     contents: {
-      type: "bubble",
-      header: { type: "box", layout: "vertical", backgroundColor: "#2865E3", contents: [{ type: "text", text: "รายละเอียดการลา", color: "#ffffff" }] },
+      type: "bubble", size: "mega",
+      header: { type: "box", layout: "vertical", backgroundColor: "#2865E3", paddingAll: "20px", contents: [{ type: "text", text: "รายละเอียดการลา", weight: "bold", color: "#ffffff" }] },
       body: {
-        type: "box", layout: "vertical", contents: [
-          { type: "text", text: `ชื่อ: ${leaveRecord.student_name}` },
-          { type: "text", text: `เหตุผล: ${leaveRecord.reason || "-"}` },
-          signedUrl ? { type: "button", action: { type: "uri", label: "เปิดดูเอกสาร", uri: signedUrl } } : { type: "text", text: "ไม่มีเอกสาร" }
+        type: "box", layout: "vertical", paddingAll: "xl", spacing: "md",
+        contents: [
+          { type: "text", text: `ชื่อ-นามสกุล: ${name}`, weight: "bold" },
+          { type: "text", text: `ประเภท: ${leaveRecord.leave_type || "ลากิจ"}`, size: "sm" },
+          { type: "text", text: `เหตุผล: ${leaveRecord.reason || "-"}`, size: "sm", wrap: true },
+          { type: "separator" },
+          signedUrl
+            ? { type: "button", action: { type: "uri", label: isPdf ? "📂 เปิดดูไฟล์ PDF" : "🖼️ ดูรูปภาพประกอบ", uri: signedUrl }, style: "primary", color: "#2865E3" }
+            : { type: "text", text: "ไม่มีเอกสารแนบ", color: "#9D9D9D", size: "xs" }
         ]
       }
     }
@@ -293,9 +310,17 @@ function buildLeaveDetailFlex(leaveRecord, session) {
 }
 
 function buildAbsentListFlex(session, absentStudents) {
-  const rows = absentStudents.map(s => ({ type: "text", text: `❌ ${s.student_name || s.name_th || s.username}`, margin: "sm" }));
-  return { type: "flex", altText: "รายชื่อขาดเรียน", contents: { type: "bubble", body: { type: "box", layout: "vertical", contents: rows.length ? rows : [{ type: "text", text: "ไม่มีคนขาดเรียน" }] } } };
+  const rows = absentStudents.map(s => ({
+    type: "box", layout: "horizontal", alignItems: "center", margin: "md",
+    contents: [
+      { type: "box", layout: "vertical", width: "40px", height: "40px", backgroundColor: "#B40023", cornerRadius: "100px", alignItems: "center", justifyContent: "center", contents: [{ type: "text", text: firstChar(s.student_name || s.name_th), color: "#ffffff" }] },
+      { type: "box", layout: "vertical", margin: "lg", contents: [{ type: "text", text: s.student_name || s.name_th || "-", weight: "bold", size: "sm" }] }
+    ]
+  }));
+  return { type: "flex", altText: "รายชื่อขาดเรียน", contents: { type: "bubble", size: "mega", header: { type: "box", layout: "vertical", backgroundColor: "#F5F5F5", paddingAll: "20px", contents: [{ type: "text", text: "รายชื่อขาดเรียน", weight: "bold" }] }, body: { type: "box", layout: "vertical", paddingAll: "xl", contents: rows.length ? rows : [{ type: "text", text: "ไม่มีคนขาด" }] } } };
 }
+
+// --- [สิ้นสุดการแก้ข้อ 2] ---
 
 // ดึงข้อมูลการลาครบถ้วนจาก Leave table โดยใช้ leave_id
 // leave.js เขียน leave_id ไว้ใน Attendance.Item ด้วย
@@ -334,49 +359,58 @@ exports.handler = async (event) => {
         if (!replyToken || !userId) return;
 
         // ─── TEACHER ROUTING ───
-      if (e.type === "message" && e.message?.text === "สถานะนักศึกษาในห้องเรียน") {
-        const session = await getLatestActiveSession();
-        if (!session) return client.replyMessage(replyToken, { type: "text", text: "📌 ยังไม่มีคาบเรียนที่กำลังดำเนินอยู่" });
-        const [allAtt, roster] = await Promise.all([getAllAttendanceBySession(session.session_id), getRoster(session.class_id)]);
-        const present = allAtt.filter(a => ["present", "late"].includes(a.status)).length;
-        const leave = allAtt.filter(a => a.status === "leave").length;
-        const absent = Math.max(0, roster.length - present - leave);
-        return client.replyMessage(replyToken, buildSummaryFlex(session, present, leave, absent));
-      }
+        if (e.type === "message" && e.message?.text === "สถานะนักศึกษาในห้องเรียน") {
+          const session = await getLatestActiveSession();
+          if (!session) return client.replyMessage(replyToken, { type: "text", text: "📌 ยังไม่มีคาบเรียนที่กำลังดำเนินอยู่" });
+          const [allAtt, roster] = await Promise.all([getAllAttendanceBySession(session.session_id), getRoster(session.class_id)]);
+          const present = allAtt.filter(a => ["present", "late"].includes(a.status)).length;
+          const leave = allAtt.filter(a => a.status === "leave").length;
+          const absent = Math.max(0, roster.length - present - leave);
+          return client.replyMessage(replyToken, buildSummaryFlex(session, present, leave, absent));
+        }
 
-      if (e.type === "message" && e.message?.text === "นักศึกษาลากิจ/ลาป่วย") {
-        const session = await getLatestActiveSession();
-        if (!session) return client.replyMessage(replyToken, { type: "text", text: "📌 ยังไม่มีคาบเรียนที่กำลังดำเนินอยู่" });
-        const leaves = await getLeavesBySession(session.session_id, session.class_id);
-        return client.replyMessage(replyToken, buildLeaveListFlex(session, leaves));
-      }
-
-      if (e.type === "postback" && e.postback.data.includes("action=view_list")) {
-        const params = new URLSearchParams(e.postback.data);
-        const status = params.get("status");
-        const session = await getSessionById(params.get("session_id")) || await getLatestActiveSession();
-        if (!session) return;
-
-        if (status === "present") {
-          const all = await getAllAttendanceBySession(session.session_id);
-          return client.replyMessage(replyToken, buildPresentListFlex(session, all.filter(a => ["present", "late"].includes(a.status))));
-        } else if (status === "leave") {
+        if (e.type === "message" && e.message?.text === "นักศึกษาลากิจ/ลาป่วย") {
+          const session = await getLatestActiveSession();
+          if (!session) return client.replyMessage(replyToken, { type: "text", text: "📌 ยังไม่มีคาบเรียนที่กำลังดำเนินอยู่" });
           const leaves = await getLeavesBySession(session.session_id, session.class_id);
           return client.replyMessage(replyToken, buildLeaveListFlex(session, leaves));
-        } else if (status === "absent") {
-          const [all, roster] = await Promise.all([getAllAttendanceBySession(session.session_id), getRoster(session.class_id)]);
-          const attIds = new Set(all.map(a => a.line_user_id));
-          return client.replyMessage(replyToken, buildAbsentListFlex(session, roster.filter(r => !attIds.has(r.line_user_id))));
         }
-      }
 
-      if (e.type === "postback" && e.postback.data.includes("action=view_leave_detail")) {
-        const leaveId = new URLSearchParams(e.postback.data).get("leave_id");
-        const leaveRec = (await dynamodb.get({ TableName: LEAVE_TABLE, Key: { leave_id: leaveId } }).promise()).Item;
-        if (!leaveRec) return client.replyMessage(replyToken, { type: "text", text: "ไม่พบข้อมูล" });
-        const session = await getSessionById(leaveRec.session_id);
-        return client.replyMessage(replyToken, buildLeaveDetailFlex(leaveRec, session));
-      }
+        if (e.type === "postback" && e.postback.data.includes("action=view_list")) {
+          const params = new URLSearchParams(e.postback.data);
+          const status = params.get("status");
+          const session = await getSessionById(params.get("session_id")) || await getLatestActiveSession();
+          if (!session) return;
+
+          if (status === "present") {
+            const all = await getAllAttendanceBySession(session.session_id);
+            return client.replyMessage(replyToken, buildPresentListFlex(session, all.filter(a => ["present", "late"].includes(a.status))));
+          } else if (status === "leave") {
+            const leaves = await getLeavesBySession(session.session_id, session.class_id);
+            return client.replyMessage(replyToken, buildLeaveListFlex(session, leaves));
+          } else if (status === "absent") {
+            const [all, roster] = await Promise.all([getAllAttendanceBySession(session.session_id), getRoster(session.class_id)]);
+            const attIds = new Set(all.map(a => a.line_user_id));
+            return client.replyMessage(replyToken, buildAbsentListFlex(session, roster.filter(r => !attIds.has(r.line_user_id))));
+          }
+        }
+
+        if (e.type === "postback" && e.postback.data.includes("action=view_leave_detail")) {
+          const leaveId = new URLSearchParams(e.postback.data).get("leave_id");
+          const leaveRec = await getLeaveRecord(leaveId);
+          if (!leaveRec) return client.replyMessage(replyToken, { type: "text", text: "ไม่พบข้อมูล" });
+          const session = await getSessionById(leaveRec.session_id) || await getLatestActiveSession();
+
+          const detailFlex = buildLeaveDetailFlex(leaveRec, session);
+          const attachPath = leaveRec.attachment_url || leaveRec.file_path;
+          const isImg = attachPath && /\.(jpg|jpeg|png|gif|webp)$/i.test(attachPath);
+          const imgUrl = isImg ? generateViewUrl(attachPath) : null;
+
+          if (imgUrl) {
+            return client.replyMessage(replyToken, [detailFlex, { type: "image", originalContentUrl: imgUrl, previewImageUrl: imgUrl }]);
+          }
+          return client.replyMessage(replyToken, detailFlex);
+        }
 
         const isCheckStatus =
           (e.type === "message" && e.message?.text === "สถานะของฉัน") ||
@@ -445,7 +479,11 @@ exports.handler = async (event) => {
         if (attendance?.leave_id) {
           const leaveRecord = await getLeaveRecord(attendance.leave_id);
           if (leaveRecord) {
+            const originalStatus = attendance.status;
             attendance = { ...attendance, ...leaveRecord };
+            if (!["present", "late", "leave", "absent"].includes(attendance.status)) {
+              attendance.status = originalStatus;
+            }
           }
         }
 
