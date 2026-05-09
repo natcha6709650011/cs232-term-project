@@ -129,7 +129,49 @@ async function submitStep2() {
     return;
   }
 
-  showSessionQR(ONSITE_SESSION_ID, "onsite");
+  const lineUserId =
+    localStorage.getItem("line_user_id") ||
+    localStorage.getItem("lineUserId") ||
+    localStorage.getItem("userId") ||
+    "U1bd557b9f84be826efc2670b3ff47401";
+
+  try {
+    const res = await fetch("https://26vfnfp8b5.execute-api.us-east-1.amazonaws.com/start-session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        session_id: ONSITE_SESSION_ID,
+        line_user_id: lineUserId,
+        type: "onsite",
+        latitude: lat,
+        longitude: lng,
+        teacher_latitude: lat,
+        teacher_longitude: lng,
+        class_id: "CS232_SEC01",
+        course_id: "CS232",
+        course_code: "CS232",
+        course_name: "CS232 INTRODUCTION TO CLOUD COMPUTING TECHNOLOGY",
+        section: "650001",
+        room: "บร2-213",
+        status: "active"
+      })
+    });
+
+    const result = await res.json().catch(() => ({}));
+    console.log("start-session result:", result);
+
+    if (!res.ok || result.success === false) {
+      alert("บันทึกพิกัดอาจารย์ไม่สำเร็จ กรุณาลองใหม่");
+      return;
+    }
+
+    showSessionQR(ONSITE_SESSION_ID, "onsite");
+  } catch (error) {
+    console.error("start onsite session error:", error);
+    alert("เชื่อมต่อระบบเริ่มคาบไม่สำเร็จ กรุณาลองใหม่");
+  }
 }
 
 /*

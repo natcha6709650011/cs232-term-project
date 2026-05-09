@@ -102,6 +102,87 @@ exports.handler = async (event) => {
         console.error("Error fetching class info:", err);
       }
     }
+    if (body.session_id) {
+      const fixedSessionId = body.session_id;
+  
+      const lat = Number(body.latitude || body.teacher_latitude);
+      const lng = Number(body.longitude || body.teacher_longitude);
+  
+      if (
+        body.type === "onsite" &&
+        (!lat || !lng || Number.isNaN(lat) || Number.isNaN(lng))
+      ) {
+        return response(400, {
+          success: false,
+          message: "onsite session requires latitude and longitude"
+        });
+      }
+  
+      await dynamodb.update({
+        TableName: SESSIONS_TABLE,
+        Key: {
+          session_id: fixedSessionId
+        },
+        UpdateExpression: `
+          SET #type = :type,
+              #status = :status,
+              latitude = :latitude,
+              longitude = :longitude,
+              teacher_latitude = :teacher_latitude,
+              teacher_longitude = :teacher_longitude,
+              teacher_line_user_id = :teacher_line_user_id,
+              teacher_id = :teacher_id,
+              class_id = :class_id,
+              course_id = :course_id,
+              course_code = :course_code,
+              course_name = :course_name,
+              #section = :section,
+              room = :room,
+              updated_at = :updated_at
+        `,
+        ExpressionAttributeNames: {
+          "#type": "type",
+          "#status": "status",
+          "#section": "section"
+        },
+        ExpressionAttributeValues: {
+          ":type": body.type || "onsite",
+          ":status": body.status || "active",
+          ":latitude": lat,
+          ":longitude": lng,
+          ":teacher_latitude": lat,
+          ":teacher_longitude": lng,
+          ":teacher_line_user_id": body.line_user_id,
+          ":teacher_id": body.line_user_id,
+          ":class_id": body.class_id || "CS232_SEC01",
+          ":course_id": body.course_id || "CS232",
+          ":course_code": body.course_code || "CS232",
+          ":course_name": body.course_name || "CS232 INTRODUCTION TO CLOUD COMPUTING TECHNOLOGY",
+          ":section": body.section || "650001",
+          ":room": body.room || "บร2-213",
+          ":updated_at": new Date().toISOString()
+        }
+      }).promise();
+  
+      const checkin_link =
+        `https://main.d1d25usb5e0o4s.amplifyapp.com/frontend/checkin.html?session_id=${encodeURIComponent(fixedSessionId)}&type=${encodeURIComponent(body.type || "onsite")}`;
+  
+      return response(200, {
+        success: true,
+        message: "fixed session updated",
+        session_id: fixedSessionId,
+        data: {
+          session_id: fixedSessionId,
+          type: body.type || "onsite",
+          status: "active",
+          latitude: lat,
+          longitude: lng,
+          teacher_latitude: lat,
+          teacher_longitude: lng,
+          checkin_link
+        }
+      });
+    }
 
     const session_id = uuidv4();
 
