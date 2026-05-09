@@ -77,6 +77,25 @@ function formatDate(timestamp) {
   });
 }
 
+function formatShortTime(timestamp) {
+  if (!timestamp) return "-";
+  const ms = timestamp < 100000000000 ? timestamp * 1000 : timestamp;
+  const d = new Date(ms);
+  const hh = String(d.toLocaleString("th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false })).padStart(2, "0");
+  const mm = String(d.toLocaleString("th-TH", { timeZone: "Asia/Bangkok", minute: "2-digit" })).padStart(2, "0");
+  return `${hh}:${mm} น.`;
+}
+
+function formatShortDate(timestamp) {
+  if (!timestamp) return "-";
+  const ms = timestamp < 100000000000 ? timestamp * 1000 : timestamp;
+  const d = new Date(ms);
+  const day = String(d.getDate()).padStart(2, "0");
+  const mon = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear() + 543;
+  return `${day}/${mon}/${year}`;
+}
+
 function firstChar(name) {
   return (name || "?").trim().charAt(0);
 }
@@ -411,6 +430,229 @@ function buildAbsentListFlex(session, absentStudents) {
 
 // --- [สิ้นสุดการแก้ข้อ 2] ---
 
+function _sessionTimeRange(session) {
+  if (session?.start_time && session?.end_time) {
+    // normalize "09.30" → "09:30" กันกรณีเก็บด้วยจุดแทนโคลอน
+    const fmt = (t) => String(t).replace(".", ":").trim() + " น.";
+    return { start: fmt(session.start_time), end: fmt(session.end_time) };
+  }
+  return {
+    start: formatShortTime(session?.created_at),
+    end: formatShortTime(session?.expire_at)
+  };
+}
+
+// helper: แถวข้อมูลวิชาด้านล่าง badge  (CS232 • 650001 • 09:30-12:30)
+function _courseRow(courseId, section, startTime, endTime) {
+  const dot = { type: "box", layout: "vertical", contents: [], width: "4px", height: "4px", backgroundColor: "#aaaaaa", cornerRadius: "10px", margin: "sm", offsetTop: "1px" };
+  const label = `${courseId || "CS232"}  •  ${section || "-"}  •  ${startTime}–${endTime}`;
+  return {
+    type: "box", layout: "horizontal", justifyContent: "center", alignItems: "center", margin: "xxl",
+    paddingStart: "xl", paddingEnd: "xl",
+    contents: [
+      { type: "text", text: label, size: "xs", color: "#aaaaaa", weight: "bold", align: "center", wrap: false, adjustMode: "shrink-to-fit" }
+    ]
+  };
+}
+ 
+// ── สถานะ: ยังไม่เช็คชื่อ (session ยังเปิดอยู่ มีปุ่มเช็คชื่อ) ──
+function buildStudentNotCheckedActiveFlex(session, checkinUrl) {
+  const now = Date.now();
+  return {
+    type: "flex", altText: `ยังไม่ได้เช็คชื่อ (ขาด) ${formatShortTime(now)}`,
+    contents: {
+      type: "bubble", size: "mega",
+      body: {
+        type: "box", layout: "vertical", paddingAll: "xxl", backgroundColor: "#F7F7F7",
+        contents: [
+          {
+            type: "box", layout: "vertical", backgroundColor: "#DA8091", cornerRadius: "100px", paddingAll: "xl", borderWidth: "2px", borderColor: "#B40023",
+            contents: [
+              { type: "box", layout: "horizontal", justifyContent: "center", alignItems: "center",
+                contents: [
+                  { type: "box", layout: "vertical", contents: [], width: "12px", height: "12px", backgroundColor: "#B40023", cornerRadius: "20px", offsetTop: "2px" },
+                  { type: "text", text: `ยังไม่ได้เช็คชื่อ (ขาด) ${formatShortTime(now)}`, weight: "bold", size: "sm", color: "#000000", margin: "md", flex: 0 }
+                ]
+              },
+              { type: "text", text: formatShortDate(now), weight: "bold", size: "md", color: "#000000", align: "center", margin: "sm" }
+            ]
+          },
+          _courseRow(session.course_id, session.section, _sessionTimeRange(session).start, _sessionTimeRange(session).end),
+          {
+            type: "box", layout: "vertical", margin: "xxl", paddingStart: "xxl", paddingEnd: "xxl",
+            contents: [{
+              type: "button", style: "primary", color: "#19A597", height: "md", margin: "none",
+              action: { type: "uri", label: "เช็คชื่อเข้าเรียน", uri: checkinUrl || "https://liff.line.me/" }
+            }]
+          }
+        ]
+      }
+    }
+  };
+}
+ 
+// ── สถานะ: ยังไม่เช็คชื่อ (session หมดเวลาแล้ว ไม่มีปุ่ม) ──
+function buildStudentAbsentFlex(session) {
+  const expireTime = session.expire_at || Date.now();
+  return {
+    type: "flex", altText: `ยังไม่ได้เช็คชื่อ (ขาด) ${formatShortTime(expireTime)}`,
+    contents: {
+      type: "bubble", size: "mega",
+      body: {
+        type: "box", layout: "vertical", paddingAll: "xxl", backgroundColor: "#F7F7F7",
+        contents: [
+          {
+            type: "box", layout: "vertical", backgroundColor: "#DE8793", cornerRadius: "100px", paddingAll: "xl", borderWidth: "2px", borderColor: "#C2002E",
+            contents: [
+              { type: "box", layout: "horizontal", justifyContent: "center", alignItems: "center",
+                contents: [
+                  { type: "box", layout: "vertical", contents: [], width: "12px", height: "12px", backgroundColor: "#C2002E", cornerRadius: "20px", margin: "none", offsetTop: "2px", spacing: "none" },
+                  { type: "text", text: `ยังไม่ได้เช็คชื่อ (ขาด) ${formatShortTime(expireTime)}`, weight: "bold", size: "sm", color: "#000000", margin: "md", flex: 0 }
+                ]
+              },
+              { type: "text", text: formatShortDate(expireTime), weight: "bold", size: "md", color: "#000000", align: "center", margin: "sm" }
+            ]
+          },
+          _courseRow(session.course_id, session.section, _sessionTimeRange(session).start, _sessionTimeRange(session).end)
+        ]
+      }
+    }
+  };
+}
+ 
+// ── สถานะ: เช็คชื่อแล้ว (present) ──
+function buildStudentPresentFlex(attendance, session) {
+  const checkinTime = attendance.checkin_time || Date.now();
+  const dotColor = attendance.status === "late" ? "#FDB456" : "#1B9E8E";
+  const badgeBg  = attendance.status === "late" ? "#F9D5A6"  : "#8CD2CC";
+  const badgeBorder = attendance.status === "late" ? "#FDB456" : "#1B9E8E";
+  const label    = attendance.status === "late" ? `เช็คชื่อแล้ว (สาย) ${formatShortTime(checkinTime)}` : `เช็คชื่อแล้ว ${formatShortTime(checkinTime)}`;
+ 
+  return {
+    type: "flex", altText: label,
+    contents: {
+      type: "bubble", size: "mega",
+      body: {
+        type: "box", layout: "vertical", paddingAll: "xxl", backgroundColor: "#F7F7F7",
+        contents: [
+          {
+            type: "box", layout: "vertical", backgroundColor: badgeBg, cornerRadius: "100px", paddingAll: "xl", borderWidth: "2px", borderColor: badgeBorder,
+            contents: [
+              { type: "box", layout: "horizontal", justifyContent: "center", alignItems: "center",
+                contents: [
+                  { type: "box", layout: "vertical", contents: [], width: "12px", height: "12px", backgroundColor: dotColor, cornerRadius: "20px", margin: "none", offsetTop: "2px", spacing: "none" },
+                  { type: "text", text: label, weight: "bold", size: attendance.status === "late" ? "sm" : "md", color: "#000000", margin: "md", flex: 0 }
+                ]
+              },
+              { type: "text", text: formatShortDate(checkinTime), weight: "bold", size: "md", color: "#000000", align: "center", margin: "sm" }
+            ]
+          },
+          _courseRow(
+            attendance.course_id || session.course_id,
+            attendance.section   || session.section,
+            _sessionTimeRange(session).start,
+            _sessionTimeRange(session).end
+          )
+        ]
+      }
+    }
+  };
+}
+ 
+// ── สถานะ: แจ้งลา ไม่มีเอกสาร ──
+function buildStudentLeaveNoDocFlex(attendance, session) {
+  const leaveTime = attendance.leave_time || attendance.created_at || Date.now();
+  const leaveType = attendance.leave_type || "ลากิจ";
+  const reason    = attendance.reason || "-";
+  return {
+    type: "flex", altText: `แจ้งลา (ไม่มีเอกสาร) ${formatShortTime(leaveTime)}`,
+    contents: {
+      type: "bubble", size: "mega",
+      body: {
+        type: "box", layout: "vertical", paddingAll: "xxl", backgroundColor: "#F7F7F7",
+        contents: [
+          {
+            type: "box", layout: "vertical", backgroundColor: "#BFD1F7", cornerRadius: "100px", paddingAll: "xl", borderWidth: "2px", borderColor: "#2865E3",
+            contents: [
+              { type: "box", layout: "horizontal", justifyContent: "center", alignItems: "center",
+                contents: [
+                  { type: "box", layout: "vertical", contents: [], width: "12px", height: "12px", backgroundColor: "#2865E3", cornerRadius: "20px", margin: "none", offsetTop: "2px" },
+                  { type: "text", text: `${leaveType} (ไม่มีเอกสาร) ${formatShortTime(leaveTime)}`, weight: "bold", size: "sm", color: "#000000", margin: "md", flex: 0 }
+                ]
+              },
+              { type: "text", text: formatShortDate(leaveTime), weight: "bold", size: "md", color: "#000000", align: "center", margin: "sm" }
+            ]
+          },
+          _courseRow(
+            attendance.course_id || session.course_id,
+            attendance.section   || session.section,
+            _sessionTimeRange(session).start,
+            _sessionTimeRange(session).end
+          ),
+          // เหตุผล
+          {
+            type: "box", layout: "vertical", margin: "xl", paddingStart: "md", paddingEnd: "md",
+            contents: [
+              { type: "text", text: `เหตุผล: ${reason}`, size: "sm", color: "#555555", wrap: true }
+            ]
+          }
+        ]
+      }
+    }
+  };
+}
+ 
+// ── สถานะ: แจ้งลา มีเอกสารแนบ ──
+function buildStudentLeaveWithDocFlex(attendance, session, viewerUrl) {
+  const leaveTime = attendance.leave_time || attendance.created_at || Date.now();
+  const leaveType = attendance.leave_type || "ลากิจ";
+  const reason    = attendance.reason || "-";
+  return {
+    type: "flex", altText: `แจ้งลา (แนบเอกสาร) ${formatShortTime(leaveTime)}`,
+    contents: {
+      type: "bubble", size: "mega",
+      body: {
+        type: "box", layout: "vertical", paddingAll: "xxl", backgroundColor: "#F7F7F7",
+        contents: [
+          {
+            type: "box", layout: "vertical", backgroundColor: "#BFD1F7", cornerRadius: "100px", paddingAll: "xl", borderWidth: "2px", borderColor: "#2865E3",
+            contents: [
+              { type: "box", layout: "horizontal", justifyContent: "center", alignItems: "center",
+                contents: [
+                  { type: "box", layout: "vertical", contents: [], width: "12px", height: "12px", backgroundColor: "#2865E3", cornerRadius: "20px", offsetTop: "2px" },
+                  { type: "text", text: `${leaveType} (แนบเอกสาร) ${formatShortTime(leaveTime)}`, weight: "bold", size: "sm", color: "#000000", margin: "md", flex: 0 }
+                ]
+              },
+              { type: "text", text: formatShortDate(leaveTime), weight: "bold", size: "md", color: "#000000", align: "center", margin: "sm" }
+            ]
+          },
+          _courseRow(
+            attendance.course_id || session.course_id,
+            attendance.section   || session.section,
+            _sessionTimeRange(session).start,
+            _sessionTimeRange(session).end
+          ),
+          // เหตุผล
+          {
+            type: "box", layout: "vertical", margin: "xl", paddingStart: "md", paddingEnd: "md",
+            contents: [
+              { type: "text", text: `เหตุผล: ${reason}`, size: "sm", color: "#555555", wrap: true }
+            ]
+          },
+          // ปุ่มเปิดเอกสาร — เปิด TeacherViewPicture.html เหมือนฝั่งอาจารย์
+          {
+            type: "box", layout: "vertical", margin: "xxl", paddingStart: "xxl", paddingEnd: "xxl",
+            contents: [{
+              type: "button", style: "primary", color: "#ABC6FF", height: "md",
+              action: { type: "uri", label: "เอกสารแจ้งลา", uri: viewerUrl }
+            }]
+          }
+        ]
+      }
+    }
+  };
+}
+
 // ดึงข้อมูลการลาครบถ้วนจาก Leave table โดยใช้ leave_id
 // leave.js เขียน leave_id ไว้ใน Attendance.Item ด้วย
 async function getLeaveRecord(leave_id) {
@@ -586,97 +828,37 @@ exports.handler = async (event) => {
         console.log("WEBHOOK final attendance:", attendance);
 
         if (!attendance) {
-          return client.replyMessage(replyToken, {
-            type: "text",
-            text:
-              `📊 สถานะของฉัน\n` +
-              `วิชา: ${activeSession.course_name || activeSession.course_id || "CS232 INTRODUCTION TO CLOUD COMPUTING TECHNOLOGY"}\n` +
-              `Section: ${activeSession.section || "650001"}\n` +
-              `สถานะ: ⏳ ยังไม่เช็คชื่อ\n` +
-              `หมายเหตุ: หากกดเช็คชื่อแล้วแต่ยังไม่ขึ้น ให้ลองกดใหม่หรือแจ้งอาจารย์`
-          });
+          // session ยังเปิดอยู่ → มีปุ่มเช็คชื่อ, หมดแล้ว → ไม่มีปุ่ม
+          const stillActive = isActiveSession(activeSession);
+          const checkinLink = activeSession.checkin_link || `${FRONTEND_BASE_URL}/checkin.html?session_id=${activeSession.session_id}`;
+          const notCheckedFlex = stillActive
+            ? buildStudentNotCheckedActiveFlex(activeSession, checkinLink)
+            : buildStudentAbsentFlex(activeSession);
+          return client.replyMessage(replyToken, notCheckedFlex);
         }
 
 
-        const statusMap = {
-          present: "✅ มาเรียน",
-          late: "🟠 มาสาย",
-          leave: "🟡 ลา",
-          absent: "❌ ขาดเรียน"
-        };
-
-        let statusText = statusMap[attendance.status] || "❓ ไม่ทราบสถานะ";
-
+        // ── แทนที่ reply text เดิมด้วย Flex message ──────────────────
+ 
+        const attachmentPath = getAttachmentPath(attendance);
+ 
+        if (attendance.status === "present" || attendance.status === "late") {
+          // เช็คชื่อแล้ว / มาสาย
+          return client.replyMessage(replyToken, buildStudentPresentFlex(attendance, activeSession));
+        }
+ 
         if (attendance.status === "leave") {
-          if (attendance.leave_type === "ลาป่วย") {
-            statusText = "🤒 ลาป่วย";
-          } else if (attendance.leave_type === "ลากิจ") {
-            statusText = "📌 ลากิจ";
+          // มีเอกสารแนบ → เปิด TeacherViewPicture.html (เหมือนฝั่งอาจารย์)
+          if (attachmentPath) {
+            const viewerUrl = `${FRONTEND_BASE_URL}/TeacherViewPicture.html?file_path=${encodeURIComponent(attachmentPath)}&name=${encodeURIComponent(attendance.attachment_name || "เอกสารแจ้งลา")}`;
+            return client.replyMessage(replyToken, buildStudentLeaveWithDocFlex(attendance, activeSession, viewerUrl));
           }
+          // ไม่มีเอกสาร
+          return client.replyMessage(replyToken, buildStudentLeaveNoDocFlex(attendance, activeSession));
         }
-        const time = formatTime(attendance.checkin_time || attendance.leave_time);
-
-        const attachmentPath =
-          attendance.attachment_url ||
-          attendance.file_path ||
-          attendance.image_url;
-
-        const attachmentUrl = attachmentPath
-          ? generateViewUrl(attachmentPath)
-          : null;
-
-        // ถ้ามีไฟล์แนบ
-        if (attachmentUrl) {
-
-          // เช็คว่าเป็นรูปไหม
-          const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(
-            attachmentPath
-          );
-
-          // ถ้าเป็นรูป → ส่งรูปใน LINE
-          if (isImage) {
-            return client.replyMessage(replyToken, [
-              {
-                type: "text",
-                text:
-                  `📊 สถานะของฉัน\n` +
-                  `วิชา: ${attendance.course_name || activeSession.course_name || "-"}\n` +
-                  `Section: ${attendance.section || activeSession.section || "-"}\n` +
-                  `สถานะ: ${statusText}\n` +
-                  `เวลา: ${time}\n` +
-                  `📎 มีเอกสารแนบ`
-              },
-              {
-                type: "image",
-                originalContentUrl: attachmentUrl,
-                previewImageUrl: attachmentUrl
-              }
-            ]);
-          }
-
-          // ถ้าเป็น PDF หรือไฟล์อื่น
-          return client.replyMessage(replyToken, {
-            type: "text",
-            text:
-              `📊 สถานะของฉัน\n` +
-              `วิชา: ${attendance.course_name || activeSession.course_name || "-"}\n` +
-              `Section: ${attendance.section || activeSession.section || "-"}\n` +
-              `สถานะ: ${statusText}\n` +
-              `เวลา: ${time}\n\n` +
-              `📎 เอกสารแนบ:\n${attachmentUrl}`
-          });
-        }
-
-        // ถ้าไม่มีไฟล์แนบ
-        return client.replyMessage(replyToken, {
-          type: "text",
-          text:
-            `📊 สถานะของฉัน\n` +
-            `วิชา: ${attendance.course_name || activeSession.course_name || "-"}\n` +
-            `Section: ${attendance.section || activeSession.section || "-"}\n` +
-            `สถานะ: ${statusText}\n` +
-            `เวลา: ${time}`
-        });
+ 
+        // status อื่น (absent ที่ system เซ็ต) — ใช้ absent flex
+        return client.replyMessage(replyToken, buildStudentAbsentFlex(activeSession));
       } catch (err) {
         console.error("HANDLER ERROR:", err);
         try {
