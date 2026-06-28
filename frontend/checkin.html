@@ -95,11 +95,16 @@
             readonly
           />
 
-          <div class="sheet-actions">
-            <button id="rescanBtn" class="secondary-btn" type="button">สแกนใหม่</button>
-            <button id="confirmBtn" class="primary-gradient-btn confirm-btn" type="button" disabled>
-              ยืนยันตำแหน่ง
+          <div class="sheet-actions" style="flex-direction:column; gap:10px;">
+            <button id="getLocationBtn" class="primary-gradient-btn confirm-btn" type="button" style="width:100%;">
+              📍 ดึงตำแหน่งปัจจุบัน
             </button>
+            <div style="display:flex; gap:10px; width:100%;">
+              <button id="rescanBtn" class="secondary-btn" type="button">สแกนใหม่</button>
+              <button id="confirmBtn" class="primary-gradient-btn confirm-btn" type="button" disabled>
+                ยืนยันตำแหน่ง
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -117,11 +122,11 @@
 
             <div class="card-body">
               <p><b>Session :</b> <span id="sessionText">-</span></p>
-              <p><b>Section :</b> <span id="sectionText">650001</span></p>
-              <p><b>ห้องเรียน :</b> <span id="roomText">us2 - 309</span></p>
-              <p><b>เวลาเรียน :</b> <span id="timeText">09:30-12:30</span></p>
+              <p><b>Section :</b> <span id="sectionText">000</span></p>
+              <p><b>ห้องเรียน :</b> <span id="roomText">บร2-111</span></p>
+              <p><b>เวลาเรียน :</b> <span id="timeText">09.30-16.00</span></p>
               <p><b>พิกัด :</b> <span id="coordsText">-</span></p>
-              <p class="date"><span id="dateText">DD/MM/YYYY</span></p>
+              <p class="date"><span id="dateText">29/06/2026</span></p>
             </div>
           </div>
 
